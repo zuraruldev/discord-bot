@@ -1,0 +1,22 @@
+{
+    "name": "discord-bot",
+    "version": "1.0.0",
+    "type": "module",
+    "scripts": {
+        "build": "node build.js",
+        "start": "node dist/index.js",
+        "lint": "eslint src/"
+    },
+    "dependencies": {
+        "oceanic.js": "^1.12.0"
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.0.0",
+        "esbuild": "^0.25.0",
+        "eslint": "^9.0.0",
+        "eslint-plugin-simple-import-sort": "^12.0.0",
+        "eslint-plugin-unused-imports": "^4.0.0",
+        "typescript": "^5.7.0",
+        "typescript-eslint": "^8.0.0"
+    }
+}
