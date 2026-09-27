@@ -78,7 +78,21 @@ export function numberFormat(number: number) {
 }
 
 function autoCategory(commandName: string): 'General' | 'Quiz' | 'Bot' {
-    const quiz = ['flag', 'capital', 'united-states', 'kabupaten', 'province', 'language', 'aliases'];
+    const quiz = [
+        'flag',
+        'capital',
+        'united-states',
+        'kabupaten',
+        'province',
+        'language',
+        'aliases',
+        'wordy',
+        'katla',
+        'surrender',
+        'stats',
+        'colorblind',
+        'show'
+    ];
     const bot = ['calculator'];
 
     if (quiz.includes(commandName)) return 'Quiz';
