@@ -9,3 +9,4 @@ yarn-debug.log*
 yarn-error.log*
 data/idle-items.json
 data/wordle-db.json
+data/schedule.json

@@ -93,7 +93,7 @@ function autoCategory(commandName: string): 'General' | 'Quiz' | 'Bot' {
         'colorblind',
         'show'
     ];
-    const bot = ['calculator'];
+    const bot = ['calculator', 'reminder'];
 
     if (quiz.includes(commandName)) return 'Quiz';
     if (bot.includes(commandName)) return 'Bot';

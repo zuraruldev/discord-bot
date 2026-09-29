@@ -1,2 +1,4 @@
 export const PREFIX = 'geo';
 export const IDLEFARM_ID = '1085406806492319784';
+export const DEFAULT_REMINDER_USER_ID = '1256220010859466795';
+
