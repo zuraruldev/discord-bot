@@ -11,86 +11,75 @@ const DEFAULT_DB: ScheduleDatabase = {
     pingUserId: DEFAULT_REMINDER_USER_ID,
     timezone: 'Asia/Jakarta',
     schedule: {
-        monday: [
+         monday: [
             {
-                matkul: 'Pemrograman Web',
-                timeStarted: '08:00',
-                timeEnded: '10:30',
-                tempat: 'Lab Komputer 1'
+                matkul: 'Keterampilan Komputer',
+                timeStarted: '07:30',
+                timeEnded: '11:10',
+                tempat: 'GTIL 5.7'
             },
             {
-                matkul: 'Kalkulus Lanjut',
-                timeStarted: '13:00',
-                timeEnded: '15:00',
-                tempat: 'Ruang 204'
+                matkul: 'Pancasila',
+                timeStarted: '13:50',
+                timeEnded: '15:30',
+                tempat: 'GKB 4.5'
             }
         ],
         tuesday: [
             {
-                matkul: 'Basis Data',
-                timeStarted: '08:00',
-                timeEnded: '10:00',
-                tempat: 'Ruang 302'
+                matkul: 'Arsitektur Komputer',
+                timeStarted: '08:20',
+                timeEnded: '11:10',
+                tempat: 'GKB 4.6'
             },
             {
-                matkul: 'Struktur Data',
-                timeStarted: '10:15',
-                timeEnded: '12:15',
-                tempat: 'Lab Komputer 2'
-            },
-            {
-                matkul: 'Bahasa Inggris',
-                timeStarted: '13:30',
+                matkul: 'Bahasa Indonesia',
+                timeStarted: '13:50',
                 timeEnded: '15:30',
-                tempat: 'Ruang 105'
-            }
+                tempat: 'GKB 3.8'
+            } 
         ],
         wednesday: [
             {
-                matkul: 'Struktur Data & Algoritma',
-                timeStarted: '08:00',
-                timeEnded: '10:30',
-                tempat: 'Lab Komputer 2'
+                matkul: 'Algoritma Programming',
+                timeStarted: '09:25',
+                timeEnded: '10:15',
+                tempat: 'GKB 4.6'
             },
             {
-                matkul: 'Matematika Diskrit',
-                timeStarted: '11:00',
-                timeEnded: '13:00',
-                tempat: 'Ruang 301'
-            }
+                matkul: 'Basis data',
+                timeStarted: '10:20',
+                timeEnded: '11:10',
+                tempat: 'GKB 4.6'
+            },
+	    { 
+                matkul: 'Algoritma programming',
+	        timeStarted: '11:15', 
+                timeEnded: '15:30',
+                tempat: 'GTIL 5.6'
+	
+             }
         ],
         thursday: [
             {
-                matkul: 'Jaringan Komputer',
-                timeStarted: '08:00',
-                timeEnded: '10:00',
-                tempat: 'Ruang 405'
+                matkul: 'Matematika Dasar',
+                timeStarted: '08:20',
+                timeEnded: '11:10',
+                tempat: 'GKB 3.8'
             },
             {
-                matkul: 'Sistem Operasi',
-                timeStarted: '10:15',
-                timeEnded: '12:15',
-                tempat: 'Lab Komputer 3'
-            },
-            {
-                matkul: 'Etika Profesi',
-                timeStarted: '13:30',
-                timeEnded: '15:00',
-                tempat: 'Ruang 202'
+                matkul: 'Pengantar Sistem Informasi',
+                timeStarted: '13:50',
+                timeEnded: '15:30',
+                tempat: 'GKB 4.2'
             }
         ],
         friday: [
             {
-                matkul: 'Kecerdasan Buatan',
-                timeStarted: '08:00',
-                timeEnded: '10:00',
-                tempat: 'Ruang 201'
-            },
-            {
-                matkul: 'Desain Antarmuka Pengguna',
-                timeStarted: '13:30',
-                timeEnded: '15:30',
-                tempat: 'Lab Komputer 1'
+                matkul: 'Basis Data',
+                timeStarted: '07:30',
+                timeEnded: '11:10',
+                tempat: 'GTIL 5.7'
             }
         ]
     }
