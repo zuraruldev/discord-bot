@@ -6,7 +6,12 @@ export interface ChatMessage {
 }
 
 const HUSBAND_USER_ID = '910785829549539338';
-const DOC_PATH = '/home/zura/Obsidian Vault/opencode project/discord bot 0.1.md';
+const DOC_PATHS = [
+    process.env.DOC_PATH,
+    './data/docs.md',
+    '/home/zura/Obsidian Vault/opencode project/discord bot 0.1.md',
+    '/home/bot/discord-bot/data/docs.md'
+].filter(Boolean) as string[];
 
 const conversationHistories = new Map<string, ChatMessage[]>();
 const MAX_HISTORY = 10;
@@ -20,13 +25,17 @@ async function getCodebaseKnowledge(): Promise<string> {
         return cachedDoc;
     }
 
-    try {
-        cachedDoc = await readFile(DOC_PATH, 'utf-8');
-        lastDocRead = now;
-        return cachedDoc;
-    } catch {
-        return cachedDoc || 'Dokumentasi bot: Prefix fx. Perintah tersedia: help, matkul, vault, flag, capital, kabupaten, province, united-states, language, aliases, wordy, katla, stats, surrender, show, colorblind, code (coming soon), status, reminder.';
+    for (const docPath of DOC_PATHS) {
+        try {
+            cachedDoc = await readFile(docPath, 'utf-8');
+            lastDocRead = now;
+            return cachedDoc;
+        } catch {
+            continue;
+        }
     }
+
+    return cachedDoc || 'Dokumentasi bot: Prefix fx. Perintah tersedia: help, matkul, vault, flag, capital, kabupaten, province, united-states, language, aliases, wordy, katla, stats, surrender, show, colorblind, code (coming soon), status, reminder, alya.';
 }
 
 function buildSystemPrompt(doc: string, isHusband: boolean, authorName: string): string {
