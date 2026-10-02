@@ -129,7 +129,7 @@ function formatDuration(seconds: number): string {
     return parts.join(' ');
 }
 
-export function createStatusEmbed(status: 'online' | 'offline', reason?: string, disk?: DiskStats): EmbedOptions {
+export function createStatusEmbed(status: 'online' | 'offline', reason?: string, disk?: DiskStats, isLive = true): EmbedOptions {
     const now = Math.floor(Date.now() / 1000);
     const hostname = os.hostname();
     const platform = `${os.type()} ${os.release()} (${os.arch()})`;
@@ -151,7 +151,7 @@ export function createStatusEmbed(status: 'online' | 'offline', reason?: string,
 
     if (status === 'offline') {
         return {
-            title: 'Server & Bot Status [OFFLINE]',
+            title: isLive ? 'Server & Bot Status [OFFLINE]' : 'Server & Bot Status Snapshot [OFFLINE]',
             description: 'Discord Bot has shut down or disconnected from gateway.',
             color: 0xED4245,
             fields: [
@@ -172,7 +172,7 @@ export function createStatusEmbed(status: 'online' | 'offline', reason?: string,
                 }
             ],
             footer: {
-                text: 'System Monitoring'
+                text: isLive ? 'Live Status Monitor - Offline' : 'Static Snapshot (Process Offline)'
             },
             timestamp: new Date().toISOString()
         };
@@ -223,12 +223,16 @@ export function createStatusEmbed(status: 'online' | 'offline', reason?: string,
     );
 
     return {
-        title: 'Server & Bot Status [ONLINE]',
-        description: 'VPS and Discord Bot are active and operational.',
+        title: isLive ? 'Server & Bot Status [ONLINE]' : 'Server & Bot Status [SNAPSHOT]',
+        description: isLive
+            ? 'VPS and Discord Bot are active and operational.'
+            : 'VPS and Discord Bot current status snapshot.',
         color: 0x57F287,
         fields,
         footer: {
-            text: 'Live Status Monitor - Auto updates every 60s'
+            text: isLive
+                ? 'Live Status Monitor - Auto updates every 60s'
+                : 'Static Snapshot | Dedicated live monitor updates in the configured status channel'
         },
         timestamp: new Date().toISOString()
     };

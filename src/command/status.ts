@@ -59,7 +59,7 @@ defineCommand({
         }
 
         const disk = await getDiskStats();
-        const embed = createStatusEmbed('online', undefined, disk);
+        const embed = createStatusEmbed('online', undefined, disk, false);
         return reply(message, { embeds: [embed] });
     }
 });
