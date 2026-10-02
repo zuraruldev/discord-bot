@@ -1,8 +1,10 @@
-import { Client } from 'oceanic.js';
+import { ActivityTypes, Client } from 'oceanic.js';
 
 import { logError } from './utils';
 
 process.loadEnvFile();
+
+const PRESENCE_TEXT = process.env.DISCORD_PRESENCE || 'Having dinner with zura';
 
 export const client = new Client({
     auth: `Bot ${process.env.TOKEN}`,
@@ -10,7 +12,17 @@ export const client = new Client({
         intents: ['ALL'],
         autoReconnect: true,
         connectionTimeout: 30000,
-        maxReconnectAttempts: Infinity
+        maxReconnectAttempts: Infinity,
+        presence: {
+            status: 'online',
+            activities: [
+                {
+                    name: 'Custom Status',
+                    type: ActivityTypes.CUSTOM,
+                    state: PRESENCE_TEXT
+                }
+            ]
+        }
     },
     rest: {
         requestTimeout: 30000,
@@ -19,6 +31,18 @@ export const client = new Client({
 });
 
 client.setMaxListeners(50);
+
+client.on('ready', () => {
+    client.editStatus('online', [
+        {
+            name: 'Custom Status',
+            type: ActivityTypes.CUSTOM,
+            state: PRESENCE_TEXT
+        }
+    ]).catch(err => {
+        console.error('[Presence Error]', err);
+    });
+});
 
 client.on('error', (err, shard) => {
     console.error(`[Client Error${shard !== undefined ? ` (Shard ${shard})` : ''}]`, err);
