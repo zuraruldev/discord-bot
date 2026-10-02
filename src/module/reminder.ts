@@ -1,5 +1,5 @@
 import { client } from '../Client';
-import { DEFAULT_REMINDER_USER_ID } from '../constants';
+import { DEFAULT_REMINDER_USER_ID, PREFIX } from '../constants';
 import {
     getDayTimeInfo,
     getScheduleForDay,
@@ -35,7 +35,7 @@ export async function sendDailyReminder(options: ReminderOptions = {}): Promise<
     const timeInfo = getDayTimeInfo(new Date(), timeZone);
 
     const targetDay = options.day ? (normalizeDayName(options.day) || timeInfo.dayKey) : timeInfo.dayKey;
-    const targetChannelId = options.channelId || process.env.REMINDER_CHANNEL_ID || db.channelId;
+    const targetChannelId = options.channelId || process.env.MATKUL_CHANNEL_ID || process.env.REMINDER_CHANNEL_ID || db.channelId;
     const pingUserId = process.env.REMINDER_USER_ID || db.pingUserId || DEFAULT_REMINDER_USER_ID;
 
     console.log('[Reminder Debug] === Reminder Triggered ===');
@@ -46,7 +46,7 @@ export async function sendDailyReminder(options: ReminderOptions = {}): Promise<
     console.log('[Reminder Debug] Ping User ID:', pingUserId);
 
     if (!targetChannelId) {
-        const errorMsg = 'No channel ID configured. Please set REMINDER_CHANNEL_ID or use `geo reminder setchannel`';
+        const errorMsg = `No channel ID configured. Please set MATKUL_CHANNEL_ID / REMINDER_CHANNEL_ID or use \`${PREFIX} matkul setchannel\``;
         console.warn(`[Reminder Debug] ${errorMsg}`);
         return {
             success: false,
@@ -97,21 +97,21 @@ export async function sendDailyReminder(options: ReminderOptions = {}): Promise<
 
     const description = items.length > 0
         ? items.map((item, idx) => {
-            const header = items.length > 1 ? `📚 **Mata Kuliah ${idx + 1}: ${item.matkul}**` : `📚 **Mata Kuliah:** ${item.matkul}`;
-            return `${header}\n⏰ **Waktu:** ${item.time}\n📍 **Tempat:** ${item.tempat}`;
-        }).join('\n\n────────────────────\n\n')
-        : 'Tidak ada jadwal pembelajaran hari ini.';
+            const header = items.length > 1 ? `> **${idx + 1}. ${item.matkul}**` : `> **${item.matkul}**`;
+            return `${header}\n> Waktu: ${item.time}\n> Tempat: ${item.tempat}`;
+        }).join('\n\n')
+        : '> *Tidak ada jadwal pembelajaran hari ini.*';
 
     try {
         const messagePayload = {
             content: `<@${pingUserId}>`,
             embeds: [
                 {
-                    title: `📅 Jadwal Kuliah - ${timeInfo.calendarStr}`,
+                    title: `Jadwal Kuliah - ${timeInfo.calendarStr}`,
                     color: 0x5865F2,
                     description,
                     footer: {
-                        text: options.forced ? 'Automated Class Reminder (Forced Run)' : 'Automated Class Reminder • 5:00 AM'
+                        text: options.forced ? 'Automated Class Reminder (Forced Run)' : 'Automated Class Reminder - 5:00 AM'
                     },
                     timestamp: new Date().toISOString()
                 }

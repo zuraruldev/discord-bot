@@ -10,3 +10,5 @@ yarn-error.log*
 data/idle-items.json
 data/wordle-db.json
 data/schedule.json
+data/monitoring.json
+data/vault.json

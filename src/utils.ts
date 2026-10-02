@@ -3,6 +3,7 @@ import { CreateMessageOptions, Message } from 'oceanic.js';
 
 import { client } from './Client';
 import { commands } from './Command';
+import { PREFIX } from './constants';
 
 function createBaseEmbed(title: string, description: string, color: number): EmbedOptions {
     return {
@@ -46,46 +47,63 @@ function uploadAsFileIfTooLong(options: CreateMessageOptions) {
     return options;
 }
 
-export function reply(message: Message, options: CreateMessageOptions | string) {
+export async function reply(message: Message, options: CreateMessageOptions | string) {
     if (typeof options === 'string') options = { content: options };
 
-    const oldReply = message.channel?.messages.toArray().find(m => m.author.id === client.user.id && m.messageReference?.messageID === message.id);
-    if (oldReply) return oldReply.edit(uploadAsFileIfTooLong(options));
+    try {
+        const oldReply = message.channel?.messages.toArray().find(m => m.author.id === client.user.id && m.messageReference?.messageID === message.id);
+        if (oldReply) return await oldReply.edit(uploadAsFileIfTooLong(options));
 
-    options.messageReference = { messageID: message.id };
+        options.messageReference = { messageID: message.id };
 
-    return message.channel?.createMessage(uploadAsFileIfTooLong(options));
+        return await message.channel?.createMessage(uploadAsFileIfTooLong(options));
+    } catch (err) {
+        console.error('[reply] Failed to reply:', err);
+        return undefined;
+    }
 }
 
-export function send(channelID: string, options: CreateMessageOptions | string) {
+export async function send(channelID: string, options: CreateMessageOptions | string) {
     if (typeof options === 'string') options = { content: options };
 
-    return client.rest.channels.createMessage(channelID, uploadAsFileIfTooLong(options));
+    return await client.rest.channels.createMessage(channelID, uploadAsFileIfTooLong(options));
 }
 
-export function logError(error: unknown) {
+let isLoggingError = false;
+
+export async function logError(error: unknown) {
     console.error(error);
 
-    const { ERROR_LOG_CHANNEL_ID } = process.env;
-    if (!ERROR_LOG_CHANNEL_ID || !(error instanceof Error)) return;
+    if (isLoggingError) return;
+    const errorLogChannel = process.env.ERROR_LOG_CHANNEL_ID || process.env.BUG_CHANNEL_ID;
+    if (!errorLogChannel || !(error instanceof Error)) return;
 
-    const content = '```\n' + (error.stack || error.message).replace(/`{3}/g, '\u200b`\u200b`\u200b`\u200b') + '\n```';
-    send(ERROR_LOG_CHANNEL_ID, content);
+    isLoggingError = true;
+    try {
+        const content = '```\n' + (error.stack || error.message).replace(/`{3}/g, '\u200b`\u200b`\u200b`\u200b') + '\n```';
+        await send(errorLogChannel, content);
+    } catch (err) {
+        console.error('[logError] Failed to forward error to channel:', err);
+    } finally {
+        isLoggingError = false;
+    }
 }
 
 export function numberFormat(number: number) {
     return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(number);
 }
 
-function autoCategory(commandName: string): 'General' | 'Quiz' | 'Bot' {
-    const quiz = [
+function autoCategory(commandName: string): 'General' | 'Geography Quiz' | 'Wordle Quiz' {
+    const geoQuiz = [
         'flag',
         'capital',
         'united-states',
         'kabupaten',
         'province',
         'language',
-        'aliases',
+        'aliases'
+    ];
+    const wordleQuiz = [
         'wordy',
         'katla',
         'surrender',
@@ -93,24 +111,34 @@ function autoCategory(commandName: string): 'General' | 'Quiz' | 'Bot' {
         'colorblind',
         'show'
     ];
-    const bot = ['calculator', 'reminder'];
 
-    if (quiz.includes(commandName)) return 'Quiz';
-    if (bot.includes(commandName)) return 'Bot';
+    if (geoQuiz.includes(commandName)) return 'Geography Quiz';
+    if (wordleQuiz.includes(commandName)) return 'Wordle Quiz';
     return 'General';
 }
 
-export function commandListEmbed(): EmbedOptions {
-    const filteredCommands = commands.filter(({ ownerOnly, hidden }) => !ownerOnly && !hidden);
+export function commandListEmbed(showAdmin = false): EmbedOptions {
+    const filteredCommands = commands.filter(({ ownerOnly, adminOnly, hidden }) => {
+        if (ownerOnly || adminOnly || hidden) {
+            return showAdmin;
+        }
+        return true;
+    });
 
     const grouped: Record<string, string[]> = {
         General: [],
-        Quiz: [],
-        Bot: []
+        'Geography Quiz': [],
+        'Wordle Quiz': []
     };
 
+    if (showAdmin) {
+        grouped.Admin = [];
+    }
+
     for (const cmd of filteredCommands) {
-        const cat = autoCategory(cmd.name);
+        const isCmdAdmin = cmd.ownerOnly || cmd.adminOnly || cmd.hidden;
+        const cat = isCmdAdmin ? 'Admin' : autoCategory(cmd.name);
+        if (!grouped[cat]) grouped[cat] = [];
         grouped[cat].push(`\`${cmd.name}\` - ${cmd.description || 'No description'}`);
     }
 
@@ -122,20 +150,31 @@ export function commandListEmbed(): EmbedOptions {
             inline: false
         }));
 
-    const botAvatar =
-        client.user?.avatarURL('png') ??
-        client.user?.defaultAvatarURL;
+    fields.push({
+        name: 'Coding Quiz (coming soon)',
+        value: '`code` - Interactive programming & algorithm quizzes (coming soon)',
+        inline: false
+    });
+
+    let botAvatar: string | undefined;
+    try {
+        if (client.ready) {
+            botAvatar = client.user?.avatarURL('png') ?? client.user?.defaultAvatarURL;
+        }
+    } catch {
+        botAvatar = undefined;
+    }
 
     return {
-        title: 'Command List - Prefix is `Geo`',
-        description: 'Here are all available commands\nUse `help [command]` for more details',
+        title: `Command List - Prefix is \`${PREFIX}\``,
+        description: `Here are all available commands\nUse \`${PREFIX} help [command]\` for more details`,
         color: 0x5865f2,
         fields,
-        thumbnail: {
-            url: botAvatar!
-        },
+        thumbnail: botAvatar ? {
+            url: botAvatar
+        } : undefined,
         footer: {
-            text: 'Example: Geo help flag'
-        },
+            text: `Example: ${PREFIX} help flag`
+        }
     };
 }

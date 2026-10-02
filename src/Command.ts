@@ -6,9 +6,10 @@ export interface Command {
     description: string;
     usages?: string[];
     ownerOnly?: boolean;
+    adminOnly?: boolean;
     rawContent?: boolean;
     hidden?: boolean;
-    run: (message: Message, args: string[]) => void;
+    run: (message: Message, args: string[]) => Promise<void | unknown> | void | unknown;
 }
 
 export const commands = new Collection<string, Command>();

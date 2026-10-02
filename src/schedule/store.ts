@@ -7,7 +7,7 @@ const DB_DIR = './data';
 const DB_FILE = './data/schedule.json';
 
 const DEFAULT_DB: ScheduleDatabase = {
-    channelId: '',
+    channelId: process.env.MATKUL_CHANNEL_ID || process.env.REMINDER_CHANNEL_ID || '',
     pingUserId: DEFAULT_REMINDER_USER_ID,
     timezone: 'Asia/Jakarta',
     schedule: {
@@ -52,13 +52,12 @@ const DEFAULT_DB: ScheduleDatabase = {
                 timeEnded: '11:10',
                 tempat: 'GKB 4.6'
             },
-	    { 
+            {
                 matkul: 'Algoritma programming',
-	        timeStarted: '11:15', 
+                timeStarted: '11:15',
                 timeEnded: '15:30',
                 tempat: 'GTIL 5.6'
-	
-             }
+            }
         ],
         thursday: [
             {
@@ -94,13 +93,22 @@ async function ensureDir(): Promise<void> {
 }
 
 export async function loadScheduleDb(): Promise<ScheduleDatabase> {
+    const envChannel = process.env.MATKUL_CHANNEL_ID || process.env.REMINDER_CHANNEL_ID || '';
     try {
         await ensureDir();
         const content = await readFile(DB_FILE, 'utf-8');
-        return JSON.parse(content) as ScheduleDatabase;
+        const parsed = JSON.parse(content) as ScheduleDatabase;
+        if (!parsed.channelId && envChannel) {
+            parsed.channelId = envChannel;
+        }
+        return parsed;
     } catch {
-        await saveScheduleDb(DEFAULT_DB);
-        return DEFAULT_DB;
+        const defaultDb = {
+            ...DEFAULT_DB,
+            channelId: envChannel
+        };
+        await saveScheduleDb(defaultDb);
+        return defaultDb;
     }
 }
 
@@ -240,4 +248,68 @@ export async function setReminderChannel(channelId: string): Promise<void> {
     const db = await loadScheduleDb();
     db.channelId = channelId;
     await saveScheduleDb(db);
+}
+
+export async function addScheduleItem(day: string, item: ScheduleItem): Promise<{ success: boolean; error?: string; dayKey: string }> {
+    const normalized = normalizeDayName(day);
+    if (!normalized || !isWeekday(normalized)) {
+        return { success: false, error: `Invalid weekday: ${day}`, dayKey: day };
+    }
+
+    const db = await loadScheduleDb();
+    if (!db.schedule) db.schedule = {};
+    const dayKey = normalized as typeof WEEKDAYS[number];
+    if (!db.schedule[dayKey]) {
+        db.schedule[dayKey] = [];
+    }
+
+    const list = Array.isArray(db.schedule[dayKey])
+        ? db.schedule[dayKey]
+        : [db.schedule[dayKey] as ScheduleItem];
+
+    if (list.length >= 3) {
+        return { success: false, error: 'Maksimal 3 mata kuliah per hari telah tercapai', dayKey };
+    }
+
+    list.push(item);
+    db.schedule[dayKey] = list;
+    await saveScheduleDb(db);
+    return { success: true, dayKey };
+}
+
+export async function removeScheduleItem(day: string, index: number): Promise<{ success: boolean; removed?: ScheduleItem; error?: string; dayKey: string }> {
+    const normalized = normalizeDayName(day);
+    if (!normalized || !isWeekday(normalized)) {
+        return { success: false, error: `Invalid weekday: ${day}`, dayKey: day };
+    }
+
+    const db = await loadScheduleDb();
+    const dayKey = normalized as typeof WEEKDAYS[number];
+    const list = db.schedule?.[dayKey];
+    if (!list || !Array.isArray(list) || list.length === 0) {
+        return { success: false, error: 'Tidak ada jadwal pada hari ini', dayKey };
+    }
+
+    if (index < 1 || index > list.length) {
+        return { success: false, error: `Index tidak valid. Pilih antara 1 dan ${list.length}`, dayKey };
+    }
+
+    const [removed] = list.splice(index - 1, 1);
+    await saveScheduleDb(db);
+    return { success: true, removed, dayKey };
+}
+
+export async function clearScheduleDay(day: string): Promise<{ success: boolean; error?: string; dayKey: string }> {
+    const normalized = normalizeDayName(day);
+    if (!normalized || !isWeekday(normalized)) {
+        return { success: false, error: `Invalid weekday: ${day}`, dayKey: day };
+    }
+
+    const db = await loadScheduleDb();
+    const dayKey = normalized as typeof WEEKDAYS[number];
+    if (db.schedule) {
+        db.schedule[dayKey] = [];
+        await saveScheduleDb(db);
+    }
+    return { success: true, dayKey };
 }

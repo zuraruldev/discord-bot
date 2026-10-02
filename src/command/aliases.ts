@@ -1,4 +1,5 @@
 import { defineCommand } from '../Command';
+import { PREFIX } from '../constants';
 import * as americanStates from '../data/americanStates';
 import * as capitals from '../data/capitals';
 import * as flags from '../data/flags';
@@ -63,7 +64,7 @@ function getAliasData(category: string, subcategory?: string, page = 1): AliasDa
     } else if (!subcategory && hasSubcategories) {
         items = Object.keys(data as Record<string, unknown>).map(sub => ({
             name: sub,
-            answers: [`Use \`geo aliases ${category} ${sub}\` to view answers`]
+            answers: [`Use \`${PREFIX} aliases ${category} ${sub}\` to view answers`]
         }));
     } else {
         items = Object.entries(data as Record<string, unknown>).map(([name, item]) => ({
@@ -159,7 +160,7 @@ defineCommand({
                         title: `Subcategories for ${info.name}`,
                         description: subcategories.map(sub => `• **${sub}**`).join('\n'),
                         color: 0x5865f2,
-                        footer: { text: `Use geo aliases ${category} <subcategory> to view answers` }
+                        footer: { text: `Use ${PREFIX} aliases ${category} <subcategory> to view answers` }
                     }]
                 });
             }
@@ -173,7 +174,7 @@ defineCommand({
                     title: 'Available Categories',
                     description: categories,
                     color: 0x5865f2,
-                    footer: { text: 'Use geo aliases <category> to view aliases' }
+                    footer: { text: `Use ${PREFIX} aliases <category> to view aliases` }
                 }]
             });
         }
@@ -182,7 +183,7 @@ defineCommand({
             return reply(message, {
                 embeds: [{
                     title: 'Invalid Category',
-                    description: `Available categories: ${Object.keys(categoryData).join(', ')}\nUse \`geo aliases list\` for more details.`,
+                    description: `Available categories: ${Object.keys(categoryData).join(', ')}\nUse \`${PREFIX} aliases list\` for more details.`,
                     color: 0xed4245
                 }]
             });
