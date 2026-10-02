@@ -5,7 +5,7 @@ import { client } from '../Client';
 import { PREFIX } from '../constants';
 import { reply } from '../utils';
 
-const ALLOWED_CHAT_CHANNEL_ID = process.env.CHAT_CHANNEL_ID || '1555493571262414868';
+const ALLOWED_CHAT_CHANNEL_ID = process.env.CHAT_CHANNEL_ID || '1555508577945522206';
 const NAME_TRIGGER_REGEX = /\b(alya|kujou|kujo|alisa)\b/i;
 
 client.on('messageCreate', async (message: Message) => {

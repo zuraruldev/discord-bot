@@ -9,7 +9,7 @@ defineCommand({
     aliases: ['ask', 'chat', 'a'],
     usages: ['<pertanyaan atau obrolan...>'],
     async run(message, args) {
-        const allowedChannelId = process.env.CHAT_CHANNEL_ID || '1555493571262414868';
+        const allowedChannelId = process.env.CHAT_CHANNEL_ID || '1555508577945522206';
         if (message.channel?.id !== allowedChannelId) {
             return reply(message, `Ngobrol santai bareng Alya cuma bisa di channel <#${allowedChannelId}> yaa! Yuk pindah ke sana xixixi~ 💅✨`);
         }

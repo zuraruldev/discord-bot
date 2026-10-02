@@ -98,7 +98,10 @@ export async function loadScheduleDb(): Promise<ScheduleDatabase> {
         await ensureDir();
         const content = await readFile(DB_FILE, 'utf-8');
         const parsed = JSON.parse(content) as ScheduleDatabase;
-        if (!parsed.channelId && envChannel) {
+        if (envChannel && parsed.channelId !== envChannel) {
+            parsed.channelId = envChannel;
+            await saveScheduleDb(parsed);
+        } else if (!parsed.channelId && envChannel) {
             parsed.channelId = envChannel;
         }
         return parsed;

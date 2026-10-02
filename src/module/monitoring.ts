@@ -87,8 +87,12 @@ export async function loadMonitoringConfig(): Promise<MonitoringConfig> {
     const envChannel = process.env.STATUS_CHANNEL_ID || process.env.MONITORING_CHANNEL_ID || process.env.SERVER_MONITORING_CHANNEL_ID || '';
     try {
         const raw = await readFile(MONITORING_FILE, 'utf-8');
-        const parsed = JSON.parse(raw);
-        if (!parsed.channelId && envChannel) {
+        const parsed = JSON.parse(raw) as MonitoringConfig;
+        if (envChannel && parsed.channelId !== envChannel) {
+            parsed.channelId = envChannel;
+            delete parsed.messageId;
+            await saveMonitoringConfig(parsed);
+        } else if (!parsed.channelId && envChannel) {
             parsed.channelId = envChannel;
         }
         return parsed;
