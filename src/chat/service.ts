@@ -169,11 +169,32 @@ export async function askAlya(userId: string, authorName: string, channelId: str
             return 'Aduh, kepalaku lagi agak pusing nih... Coba tanyakan lagi sebentar lagi yaa! 😭✨';
         }
 
-        const data = await response.json() as {
-            choices?: { message?: { content?: string } }[];
-        };
+        const rawText = await response.text();
+        let answer = '';
 
-        const answer = data.choices?.[0]?.message?.content?.trim();
+        try {
+            const data = JSON.parse(rawText) as {
+                choices?: { message?: { content?: string } }[];
+            };
+            answer = data.choices?.[0]?.message?.content?.trim() || '';
+        } catch {
+            const lines = rawText.split('\n');
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (trimmed.startsWith('data: ') && trimmed !== 'data: [DONE]') {
+                    try {
+                        const chunk = JSON.parse(trimmed.slice(6)) as {
+                            choices?: { delta?: { content?: string }; message?: { content?: string } }[];
+                        };
+                        const chunkContent = chunk.choices?.[0]?.delta?.content || chunk.choices?.[0]?.message?.content;
+                        if (chunkContent) answer += chunkContent;
+                    } catch {
+                        continue;
+                    }
+                }
+            }
+            answer = answer.trim();
+        }
         if (!answer) {
             return 'Alya bingung mau jawab apa barusan xixixi~ Coba ulangi lagi ya! 🌸';
         }
