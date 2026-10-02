@@ -1,6 +1,6 @@
 # Discord Bot (fx)
 
-A multifunctional Discord bot written in TypeScript and Oceanic.js, featuring interactive geography and Wordle games, an AI chatbot companion (Alya-san), an automated university class reminder system, live VPS and bot system monitoring, and a virtual Linux-style vault filesystem.
+A multifunctional Discord bot written in TypeScript and Oceanic.js, featuring interactive geography and Wordle games, an AI chatbot companion (Alya-san), an automated university class reminder system, live VPS and bot system monitoring and a virtual Linux-style vault filesystem.
 
 ---
 
@@ -14,7 +14,6 @@ A multifunctional Discord bot written in TypeScript and Oceanic.js, featuring in
 - **Context-Aware**:
   - Live university schedule and current day/time awareness (WIB / `Asia/Jakarta`).
   - Bot codebase knowledge directly loaded from project documentation.
-  - Husband recognition for user `<@910785829549539338>`.
 - **Server Security & Admin Authority**:
   - Even with Discord Administrator permissions, Alya strictly rejects any kick, ban, timeout, or role manipulation requests from regular users.
   - Moderation and role management requests are exclusively reserved for verified Server Admins.
@@ -94,34 +93,6 @@ npm install
 
 ### 2. Environment Configuration
 Create a `.env` file based on `.env.example`:
-```env
-# Discord Bot Token
-TOKEN=your_discord_bot_token_here
-
-# Prefix (default: fx)
-PREFIX=fx
-
-# Bug & Error Logging Channel ID
-ERROR_LOG_CHANNEL_ID=1548643055614165092
-BUG_CHANNEL_ID=1548643055614165092
-
-# Matkul / Class Reminder Channel ID
-MATKUL_CHANNEL_ID=1548318224636977233
-REMINDER_CHANNEL_ID=1548318224636977233
-
-# Server & Bot Live Status Monitoring Channel ID
-STATUS_CHANNEL_ID=1548338205928202321
-MONITORING_CHANNEL_ID=1548338205928202321
-
-# Admin User IDs (comma-separated)
-ADMIN_USER_IDS=1256220010859466795,910785829549539338
-
-# AI Chatbot (9router or OpenAI-compatible)
-AI_API_BASE=http://localhost:20128/v1
-AI_API_KEY=your_api_key_here
-AI_MODEL=ag/gemini-3.8-flash-low
-CHAT_CHANNEL_ID=1555508577945522206
-```
 
 ### 3. Build & Run
 ```bash
@@ -136,38 +107,6 @@ npm start
 ```bash
 # Run ESLint checks
 npm run lint
-```
-
----
-
-## VPS Deployment (Systemd)
-
-To run the bot as a background service with auto-restart on a Linux VPS:
-
-```ini
-# /etc/systemd/system/discord-bot.service
-[Unit]
-Description=Discord Bot Service
-After=network.target
-
-[Service]
-Type=simple
-User=root
-WorkingDirectory=/root/discord-bot
-ExecStart=/usr/bin/node dist/index.js
-Restart=always
-RestartSec=5
-EnvironmentFile=/root/discord-bot/.env
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Reload systemd and start the service:
-```bash
-systemctl daemon-reload
-systemctl enable --now discord-bot
-systemctl status discord-bot
 ```
 
 ---
