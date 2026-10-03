@@ -15,16 +15,6 @@ defineCommand({
         const userIsAdmin = isAdmin(message.author.id);
         if (args[0]) {
             const query = args[0].toLowerCase();
-            if (query === 'code' || query === 'coding') {
-                return reply(message, {
-                    embeds: [{
-                        title: 'Help: Coding Quiz',
-                        description: 'Interactive programming and algorithm quizzes.\nStatus: (coming soon)',
-                        color: 0x5865f2
-                    }]
-                });
-            }
-
             const cmd = commands.find(c => c.name === query || c.aliases?.includes(query));
             if (!cmd || ((cmd.ownerOnly || cmd.adminOnly || cmd.hidden) && !userIsAdmin)) {
                 return reply(message, `Command \`${args[0]}\` not found.`);

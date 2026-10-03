@@ -12,3 +12,4 @@ data/wordle-db.json
 data/schedule.json
 data/monitoring.json
 data/vault.json
+data/user-stats.json

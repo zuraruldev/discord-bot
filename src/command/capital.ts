@@ -1,6 +1,7 @@
 import { client } from '../Client';
 import { defineCommand } from '../Command';
 import { capitals } from '../data/capitals';
+import { recordGeographyAnswer } from '../stats/store';
 import { reply } from '../utils';
 
 interface QuestionData {
@@ -18,6 +19,7 @@ client.on('messageCreate', async (message) => {
 
     const isCorrect = quiz.answer.some(a => a.toLowerCase() === message.content.toLowerCase());
     activeQuizzes.delete(message.channel.id);
+    await recordGeographyAnswer(message.author.id, isCorrect, 'capital', message.author.username);
 
     await reply(message, {
         embeds: [{

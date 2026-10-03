@@ -24,10 +24,10 @@
 
 ### Redesigned Help Command
 - Category structure reorganized into:
-  - `General`: `help`, `matkul`, `vault`
+  - `General`: `help`, `matkul`, `vault`, `stats`
   - `Geography Quiz`: `flag`, `capital`, `united-states`, `kabupaten`, `province`, `language`, `aliases`
-  - `Wordle Quiz`: `wordy`, `katla`, `surrender`, `stats`, `colorblind`, `show`
-  - `Coding Quiz (coming soon)`: `code`
+  - `Wordle Quiz`: `wordy`, `katla`, `surrender`, `colorblind`, `show`
+  - `Coding Quiz`: `code`, `php`, `devops`, `hardware`, `learn`, `practice`
   - `Admin`: `reminder`, `status` (only visible to admins)
 
 ### Live VPS & Bot Status Monitoring (`src/module/monitoring.ts`, `src/command/status.ts`)
@@ -59,6 +59,9 @@
   - `cat <@owner>:<path>` or `shared cat <@owner> <path>` reads shared files.
   - `unshare <path> <@user>` revokes file access.
 - Quotas: Enforces a 1 MB storage quota per user with `df` / `quota` inspection.
+- AI Assistant Vault Integration (Alya):
+  - Users with vault permissions can ask Alya via chat to create folders (`mkdir`), write or edit text files (`write`), delete files/directories (`delete`), read files (`read`), or list directory contents (`list`).
+  - Strict User Isolation: Alya only accesses and modifies the vault belonging to the requesting user (`message.author.id`). Any attempt to manipulate another user's vault is strictly blocked. Users without vault permission are denied access and instructed to contact an admin.
 
 ---
 
@@ -185,14 +188,30 @@
 
 - `fx wordy <5-letter-guess>` - Guess the 5-letter hidden English word (Wordle).
 - `fx katla <5-letter-guess>` - Guess the 5-letter hidden Indonesian word (Katla).
-- `fx stats` - Displays your game statistics (wins, losses, surrenders).
 - `fx surrender` - Gives up current game and reveals the answer.
 - `fx show` - Displays your current game board.
 - `fx colorblind` - Toggles colorblind palette mode.
 
-### Coding Quiz (Coming Soon)
+### Coding Quiz & Exam Commands
 
-- `fx code` - Interactive programming and algorithm quizzes (coming soon).
+- `fx code [category] [difficulty]` - Interactive 10-minute 20-question exam test.
+  - `fx code` - Show available exam categories and specs.
+  - `fx code php-basic` (or `fx code php basic`) - Start PHP Dasar exam.
+  - `fx code php-advance` (or `fx code php advance`) - Start PHP Lanjutan exam.
+  - `fx code devops` - Start DevOps & Networking exam.
+  - `fx code hardware` - Start Computer Hardware exam.
+  - Exam Specs: 10 minutes, 20 questions (50% multiple choice, 50% direct conversion/calculation), 20% hard questions, pass mark >= 90% (18/20).
+  - Pre-exam warning confirmation: Requires user confirmation (`mulai` / `batal`) before starting, advising to study first.
+  - Grading & Retake distinction: Passing on the first attempt earns Grade S (Cum Laude) and full certification title; retake passes are capped at Grade B (Retake Pass).
+- `fx php [basic|advance]` - Shortcut for the PHP exam.
+- `fx devops` - Shortcut for the DevOps exam.
+- `fx hardware` - Shortcut for the Computer Hardware exam (aliases: `hw`, `computer`).
+- `fx learn [topic]` - Access study material and guides for exams (`php-basic`, `php-advance`, `devops`, `hardware`). Long materials automatically format as multi-part Discord message text.
+- `fx practice [topic]` - Take 1 random coding question for quick risk-free practice (like geography trivia) without triggering the 10-minute exam or affecting stats (aliases: `latihan`, `codepractice`).
+
+### Unified Stats Command
+
+- `fx stats [@user]` - Displays unified statistics merging Coding Quiz Exam records & titles, Wordle & Katla performance, and Geography Quiz accuracy (aliases: `profil`, `profile`, `stat`).
 
 ---
 
@@ -394,10 +413,65 @@ This JSON structure can be loaded into an LLM or conversational bot database to 
   {
     "category": "Coding Quiz",
     "name": "code",
-    "syntax": "fx code",
+    "aliases": ["coding", "quizcode"],
+    "syntax": "fx code [php [basic|advance] | devops | hardware | list]",
     "permission": "Everyone",
-    "description": "Interactive coding challenges and quizzes (coming soon).",
-    "examples": ["fx code"]
+    "description": "Interactive coding, devops, and computer hardware quiz.",
+    "examples": ["fx code", "fx code php basic", "fx code php advance", "fx code devops", "fx code hardware", "fx code list"]
+  },
+  {
+    "category": "Coding Quiz",
+    "name": "php",
+    "aliases": ["phpquiz"],
+    "syntax": "fx php [basic | advance]",
+    "permission": "Everyone",
+    "description": "PHP programming quiz with basic and advance levels.",
+    "examples": ["fx php", "fx php basic", "fx php advance"]
+  },
+  {
+    "category": "Coding Quiz",
+    "name": "devops",
+    "aliases": ["devopsquiz"],
+    "syntax": "fx devops",
+    "permission": "Everyone",
+    "description": "DevOps quiz covering IPv4/IPv6 networking, SSH, servers, Linux, Docker, etc.",
+    "examples": ["fx devops"]
+  },
+  {
+    "category": "Coding Quiz",
+    "name": "hardware",
+    "aliases": ["hw", "computer", "hardwarequiz"],
+    "syntax": "fx hardware",
+    "permission": "Everyone",
+    "description": "Computer hardware quiz covering CPU, SATA, RAM, motherboards, etc.",
+    "examples": ["fx hardware", "fx hw"]
+  },
+  {
+    "category": "Coding Quiz",
+    "name": "learn",
+    "aliases": ["belajar", "materi"],
+    "syntax": "fx learn [php-basic | php-advance | devops | hardware]",
+    "permission": "Everyone",
+    "description": "Pelajari materi ujian Coding Quiz sebelum mengambil tes.",
+    "examples": ["fx learn", "fx learn php-basic", "fx learn devops"]
+  },
+  {
+    "category": "Coding Quiz",
+    "name": "practice",
+    "aliases": ["latihan", "codepractice", "drill"],
+    "syntax": "fx practice [php-basic | php-advance | devops | hardware]",
+    "permission": "Everyone",
+    "description": "Latihan 1 soal coding/devops/hardware secara acak tanpa mempengaruhi statistik ujian.",
+    "examples": ["fx practice", "fx practice php", "fx practice devops", "fx practice hardware"]
+  },
+  {
+    "category": "General",
+    "name": "stats",
+    "aliases": ["profil", "profile", "stat"],
+    "syntax": "fx stats [@user]",
+    "permission": "Everyone",
+    "description": "Tampilkan profil statistik gabungan Coding Quiz, Wordle, dan Geografi.",
+    "examples": ["fx stats", "fx stats @user"]
   }
 ]
 ```

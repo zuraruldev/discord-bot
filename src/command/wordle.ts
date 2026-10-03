@@ -55,34 +55,12 @@ async function handleColorblind(message: Message) {
     return reply(message, description);
 }
 
+import { createUnifiedStatsEmbed } from './stats';
+
 async function handleStats(message: Message) {
-    const player = getUserInfo(message.author.id, message.author.username);
-    const stats = player.stats;
     const avatarUrl = message.author.avatarURL('png');
-
-    const langFields = Object.entries(stats.games).map(([lang, count]) => {
-        const flag = lang === 'en' ? 'gb' : lang;
-        return {
-            name: `${lang} :flag_${flag}:`,
-            value: count.toString(),
-            inline: true
-        };
-    });
-
-    return reply(message, {
-        embeds: [{
-            title: `${message.author.username}'s stats`,
-            color: 0x57F287,
-            thumbnail: { url: avatarUrl },
-            fields: [
-                { name: '🏆 Won', value: stats.wins.toString(), inline: true },
-                { name: '☠️ Lost', value: stats.losses.toString(), inline: true },
-                { name: '🏳️ Surrendered', value: stats.surrenders.toString(), inline: false },
-                { name: '═══════════════════════', value: 'Games played in different languages:', inline: false },
-                ...langFields
-            ]
-        }]
-    });
+    const embed = await createUnifiedStatsEmbed(message.author.id, message.author.username, avatarUrl);
+    return reply(message, { embeds: [embed] });
 }
 
 async function handleSurrender(message: Message) {
@@ -234,16 +212,6 @@ defineCommand({
     usages: [''],
     async run(message) {
         return handleSurrender(message);
-    }
-});
-
-defineCommand({
-    name: 'stats',
-    aliases: ['wordlestats'],
-    description: 'View your Wordy game statistics',
-    usages: [''],
-    async run(message) {
-        return handleStats(message);
     }
 });
 

@@ -2,6 +2,7 @@ import { defineCommand } from '../Command';
 import { PREFIX } from '../constants';
 import * as americanStates from '../data/americanStates';
 import * as capitals from '../data/capitals';
+import { codingAliases } from '../data/codingQuiz';
 import * as flags from '../data/flags';
 import * as kabupatens from '../data/kabupatens';
 import * as languages from '../data/languages';
@@ -18,7 +19,12 @@ const categoryData: Record<string, Record<string, unknown>> = {
     'flags': flags.flags || flags,
     'kabupatens': kabupatens.kabupatens || kabupatens,
     'languages': languages.languages || languages,
-    'provinsis': provinsis.provinsis || provinsis
+    'provinsis': provinsis.provinsis || provinsis,
+    'coding': codingAliases,
+    'php-basic': codingAliases['php-basic'],
+    'php-advance': codingAliases['php-advance'],
+    'devops': codingAliases['devops'],
+    'hardware': codingAliases['hardware']
 };
 
 const categoryInfo: Record<string, { name: string; hasSubcategories: boolean }> = {
@@ -27,7 +33,12 @@ const categoryInfo: Record<string, { name: string; hasSubcategories: boolean }> 
     'flags': { name: 'Flags', hasSubcategories: false },
     'kabupatens': { name: 'Kabupatens', hasSubcategories: true },
     'languages': { name: 'Languages', hasSubcategories: false },
-    'provinsis': { name: 'Provinces', hasSubcategories: false }
+    'provinsis': { name: 'Provinces', hasSubcategories: false },
+    'coding': { name: 'Coding Quiz', hasSubcategories: true },
+    'php-basic': { name: 'PHP Basic Quiz', hasSubcategories: false },
+    'php-advance': { name: 'PHP Advance Quiz', hasSubcategories: false },
+    'devops': { name: 'DevOps Quiz', hasSubcategories: false },
+    'hardware': { name: 'Computer Hardware Quiz', hasSubcategories: false }
 };
 
 const ITEMS_PER_PAGE = 10;

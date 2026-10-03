@@ -1,6 +1,7 @@
 import { client } from '../Client';
 import { defineCommand } from '../Command';
 import { kabupatens } from '../data/kabupatens';
+import { recordGeographyAnswer } from '../stats/store';
 import { reply } from '../utils';
 
 interface KabupatenData {
@@ -19,6 +20,7 @@ client.on('messageCreate', async (message) => {
 
     const isCorrect = quiz.answer.some(a => a.toLowerCase() === message.content.toLowerCase());
     activeQuizzes.delete(message.channel.id);
+    await recordGeographyAnswer(message.author.id, isCorrect, 'kabupaten', message.author.username);
 
     await reply(message, {
         embeds: [{

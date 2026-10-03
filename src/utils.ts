@@ -93,7 +93,7 @@ export function numberFormat(number: number) {
     return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(number);
 }
 
-function autoCategory(commandName: string): 'General' | 'Geography Quiz' | 'Wordle Quiz' {
+function autoCategory(commandName: string): 'General' | 'Geography Quiz' | 'Wordle Quiz' | 'Coding Quiz' {
     const geoQuiz = [
         'flag',
         'capital',
@@ -107,13 +107,21 @@ function autoCategory(commandName: string): 'General' | 'Geography Quiz' | 'Word
         'wordy',
         'katla',
         'surrender',
-        'stats',
         'colorblind',
         'show'
+    ];
+    const codingQuiz = [
+        'code',
+        'php',
+        'devops',
+        'hardware',
+        'learn',
+        'practice'
     ];
 
     if (geoQuiz.includes(commandName)) return 'Geography Quiz';
     if (wordleQuiz.includes(commandName)) return 'Wordle Quiz';
+    if (codingQuiz.includes(commandName)) return 'Coding Quiz';
     return 'General';
 }
 
@@ -128,7 +136,8 @@ export function commandListEmbed(showAdmin = false): EmbedOptions {
     const grouped: Record<string, string[]> = {
         General: [],
         'Geography Quiz': [],
-        'Wordle Quiz': []
+        'Wordle Quiz': [],
+        'Coding Quiz': []
     };
 
     if (showAdmin) {
@@ -149,12 +158,6 @@ export function commandListEmbed(showAdmin = false): EmbedOptions {
             value: list.join('\n'),
             inline: false
         }));
-
-    fields.push({
-        name: 'Coding Quiz (coming soon)',
-        value: '`code` - Interactive programming & algorithm quizzes (coming soon)',
-        inline: false
-    });
 
     let botAvatar: string | undefined;
     try {

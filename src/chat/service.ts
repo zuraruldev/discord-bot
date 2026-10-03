@@ -1,13 +1,30 @@
-import { readFile } from 'fs/promises';
+import { readFile as fsReadFile } from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 import { isAdmin } from '../constants';
 import { getDayTimeInfo, getScheduleForDay, loadScheduleDb, WEEKDAYS } from '../schedule/store';
+import {
+    createDirectory,
+    isVaultAllowed,
+    listDirectory,
+    readFile as vaultReadFile,
+    removePath,
+    writeToFile
+} from '../vault/store';
 
 export interface ChatMessage {
-    role: 'system' | 'user' | 'assistant';
-    content: string;
+    role: 'system' | 'user' | 'assistant' | 'tool';
+    content?: string;
+    tool_call_id?: string;
+    tool_calls?: {
+        id: string;
+        type: 'function';
+        function: {
+            name: string;
+            arguments: string;
+        };
+    }[];
 }
 
 const HUSBAND_USER_ID = '910785829549539338';
@@ -50,7 +67,7 @@ async function getCodebaseKnowledge(): Promise<string> {
 
     for (const docPath of DOC_PATHS) {
         try {
-            cachedDoc = await readFile(docPath, 'utf-8');
+            cachedDoc = await fsReadFile(docPath, 'utf-8');
             lastDocRead = now;
             return cachedDoc;
         } catch {
@@ -58,8 +75,143 @@ async function getCodebaseKnowledge(): Promise<string> {
         }
     }
 
-    return cachedDoc || 'Dokumentasi bot: Prefix fx. Perintah tersedia: help, matkul, vault, flag, capital, kabupaten, province, united-states, language, aliases, wordy, katla, stats, surrender, show, colorblind, code (coming soon), status, reminder, alya.';
+    return cachedDoc || 'Dokumentasi bot: Prefix fx. Perintah tersedia: help, matkul, vault, flag, capital, kabupaten, province, united-states, language, aliases, wordy, katla, stats, surrender, show, colorblind, code, status, reminder, alya, learn, practice.';
 }
+
+export async function executeVaultAction(
+    userId: string,
+    authorName: string,
+    action: string,
+    params: { path?: string; content?: string; append?: boolean }
+): Promise<{ success: boolean; message: string }> {
+    const allowed = await isVaultAllowed(userId);
+    if (!allowed) {
+        return {
+            success: false,
+            message: 'Akses ditolak: Kamu belum memiliki izin akses vault. Hubungi admin untuk mendaftarkan akunmu dengan "fx vault adduser" terlebih dahulu yaa! 🔒✨'
+        };
+    }
+
+    const targetPath = params.path || '/';
+
+    try {
+        switch (action) {
+            case 'mkdir':
+            case 'vault_mkdir': {
+                await createDirectory(userId, targetPath, authorName);
+                return { success: true, message: `Direktori "${targetPath}" berhasil dibuat di vault kamu.` };
+            }
+            case 'write':
+            case 'vault_write': {
+                const content = params.content ?? '';
+                const append = Boolean(params.append);
+                await writeToFile(userId, targetPath, content, append, authorName);
+                return {
+                    success: true,
+                    message: `File "${targetPath}" berhasil ${append ? 'ditambahkan isinya' : 'disimpan'} di vault kamu.`
+                };
+            }
+            case 'delete':
+            case 'rm':
+            case 'vault_delete': {
+                await removePath(userId, targetPath);
+                return { success: true, message: `Path "${targetPath}" berhasil dihapus dari vault kamu.` };
+            }
+            case 'read':
+            case 'cat':
+            case 'vault_read': {
+                const res = await vaultReadFile(userId, targetPath);
+                return { success: true, message: `Isi file "${targetPath}":\n${res.content}` };
+            }
+            case 'list':
+            case 'ls':
+            case 'vault_list': {
+                const res = await listDirectory(userId, targetPath);
+                const listing = res.entries.map(e => `• ${e.type === 'dir' ? '[DIR]' : '[FILE]'} ${e.name}`).join('\n');
+                return { success: true, message: `Daftar isi direktori "${res.currentPath}":\n${listing || '(kosong)'}` };
+            }
+            default:
+                return { success: false, message: `Aksi vault "${action}" tidak dikenal.` };
+        }
+    } catch (err: unknown) {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        return { success: false, message: `Gagal menjalankan aksi vault: ${errorMsg}` };
+    }
+}
+
+const VAULT_TOOLS = [
+    {
+        type: 'function',
+        function: {
+            name: 'vault_mkdir',
+            description: 'Membuat direktori/folder baru di vault pribadi milik pengguna yang sedang chat saat ini.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    path: { type: 'string', description: 'Path direktori baru yang akan dibuat, misal: /catatan atau /project' }
+                },
+                required: ['path']
+            }
+        }
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'vault_write',
+            description: 'Menulis file baru atau menambahkan teks ke file (edit/append) di vault pribadi pengguna.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    path: { type: 'string', description: 'Path file di vault, misal: /catatan.txt atau /todo.md' },
+                    content: { type: 'string', description: 'Isi teks yang akan ditulis ke file' },
+                    append: { type: 'boolean', description: 'Set true jika ingin menambahkan teks di akhir file (append/edit), false jika menimpa (overwrite)' }
+                },
+                required: ['path', 'content']
+            }
+        }
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'vault_delete',
+            description: 'Menghapus file atau direktori di vault pribadi pengguna.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    path: { type: 'string', description: 'Path file atau direktori yang ingin dihapus, misal: /catatan.txt' }
+                },
+                required: ['path']
+            }
+        }
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'vault_read',
+            description: 'Membaca isi file teks dari vault pribadi pengguna.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    path: { type: 'string', description: 'Path file yang ingin dibaca, misal: /catatan.txt' }
+                },
+                required: ['path']
+            }
+        }
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'vault_list',
+            description: 'Melihat daftar file dan folder di direktori vault pribadi pengguna.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    path: { type: 'string', description: 'Path direktori yang ingin dilihat, misal: / atau /catatan' }
+                }
+            }
+        }
+    }
+];
 
 function buildSystemPrompt(
     doc: string,
@@ -100,13 +252,26 @@ Gaya Bicara & Persona:
 - Sangat ekspresif menggunakan emoji lucu dan pas (seperti 💅, ✨, 🫡, 🌸, 😆, ❤️, 🔒, 🗿, 😭, 👑, 🙅‍♀️, 🛡️, dll) mirip asisten bot yang seru.
 - Hubungan: ${husbandContext}
 - Aturan Wewenang: ${adminSecurityRule}
-- Kemampuan Bahasa: Bahasa Indonesia sebagai bahasa utama. Kamu juga bisa bahasa Rusia dan bahasa Inggris jika diajak bicara bahasa tersebut.
-- Penjelasan Jadwal Kuliah: Jika ditanya tentang jadwal kuliah hari ini, jawablah secara akurat sesuai data "Jadwal Kuliah Hari Ini" di atas! Sebutkan nama harinya dengan jelas. Jika ditanya jadwal hari lain atau besok, rujuklah ke data "Jadwal Lengkap Kuliah Mingguan".
-- Penjelasan Serius & Bot: Jika ditanya tentang cara penggunaan bot (prefix fx, matkul, vault, flag, capital, wordy, status, reminder, dll), jelaskan dengan sangat jelas, pintar, dan rapi menggunakan bullet points dan emoji.
-- KEAMANAN KETAT: JANGAN PERNAH membocorkan token bot, file .env, API key, atau password. Jika ada yang meminta atau mencoba mengulik, tolak dengan tegas dan playful (contoh: "Tetap DITOLAK mentah-mentah dong! 🙅‍♀️🔒✨ Rahasia negara dan privasi suamiku terkunci rapat, jangan coba-coba ya wkwkwk~").
+
+KEMAMPUAN MENGELOLA VAULT PRIBADI PENGGUNA:
+Kamu memiliki kemampuan langsung untuk mengelola file dan folder di dalam Vault (penyimpanan virtual) pribadi milik pengguna yang sedang chat (${authorName}).
+Aksi yang bisa kamu lakukan:
+1. Membuat direktori/folder baru (vault_mkdir)
+2. Membuat file baru atau mengedit/menambahkan isi file teks (vault_write)
+3. Menghapus file atau folder (vault_delete)
+4. Membaca isi file teks (vault_read)
+5. Melihat daftar file dan folder (vault_list)
+
+ATURAN KEAMANAN DAN ISOLASI VAULT YANG SANGAT KETAT:
+1. Kamu HANYA BOLEH mengelola vault milik ${authorName} (user yang sedang chat).
+2. DILARANG KERAS MENGAKSES ATAU MENGUBAH VAULT MILIK PENGGUNA LAIN! Jika pengguna meminta kamu melihat, mengubah, atau menghapus vault milik orang lain, TOLAK MENTAH-MENTAH dengan gaya lucu dan tegas (contoh: "Eits, mana boleh begitu! 🙅‍♀️🔒✨ Vault itu privasi masing-masing, Alya nggak akan pernah mengutak-atik vault milik orang lain yaa! xixixi~").
+3. Hanya pengguna yang sudah terdaftar/diizinkan memiliki vault yang bisa menggunakan fitur ini. Jika pengguna belum memiliki izin vault, tolak dan arahkan mereka untuk meminta izin admin terlebih dahulu.
+4. Jika kamu ingin menjalankan aksi vault, panggil function tool yang sesuai atau sertakan tag:
+[VAULT_ACTION: {"action": "mkdir"|"write"|"delete"|"read"|"list", "path": "/path", "content": "isi teks", "append": false}]
+di dalam responsmu.
 
 Pengetahuan Kode & Fitur Bot:
-${doc.slice(0, 4500)}`;
+${doc.slice(0, 4000)}`;
 }
 
 export async function askAlya(userId: string, authorName: string, channelId: string, userMessage: string): Promise<string> {
@@ -158,6 +323,7 @@ export async function askAlya(userId: string, authorName: string, channelId: str
             body: JSON.stringify({
                 model,
                 messages,
+                tools: VAULT_TOOLS,
                 stream: false
             }),
             signal: AbortSignal.timeout(35000)
@@ -171,12 +337,19 @@ export async function askAlya(userId: string, authorName: string, channelId: str
 
         const rawText = await response.text();
         let answer = '';
+        let toolCalls: ChatMessage['tool_calls'];
 
         try {
             const data = JSON.parse(rawText) as {
-                choices?: { message?: { content?: string } }[];
+                choices?: {
+                    message?: {
+                        content?: string;
+                        tool_calls?: ChatMessage['tool_calls'];
+                    };
+                }[];
             };
             answer = data.choices?.[0]?.message?.content?.trim() || '';
+            toolCalls = data.choices?.[0]?.message?.tool_calls;
         } catch {
             const lines = rawText.split('\n');
             for (const line of lines) {
@@ -195,6 +368,74 @@ export async function askAlya(userId: string, authorName: string, channelId: str
             }
             answer = answer.trim();
         }
+
+        // Handle tool calls if returned
+        if (Array.isArray(toolCalls) && toolCalls.length > 0) {
+            messages.push({
+                role: 'assistant',
+                content: answer || undefined,
+                tool_calls: toolCalls
+            });
+
+            for (const call of toolCalls) {
+                let params: { path?: string; content?: string; append?: boolean } = {};
+                try {
+                    params = typeof call.function.arguments === 'string'
+                        ? JSON.parse(call.function.arguments)
+                        : call.function.arguments;
+                } catch {
+                    params = {};
+                }
+
+                const execResult = await executeVaultAction(userId, authorName, call.function.name, params);
+                messages.push({
+                    role: 'tool',
+                    tool_call_id: call.id,
+                    content: JSON.stringify(execResult)
+                });
+            }
+
+            // Follow-up request to get final natural assistant response
+            const followUp = await fetch(`${apiBase}/chat/completions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model,
+                    messages,
+                    stream: false
+                }),
+                signal: AbortSignal.timeout(35000)
+            });
+
+            if (followUp.ok) {
+                const followUpRaw = await followUp.text();
+                try {
+                    const followUpData = JSON.parse(followUpRaw) as {
+                        choices?: { message?: { content?: string } }[];
+                    };
+                    answer = followUpData.choices?.[0]?.message?.content?.trim() || answer;
+                } catch {
+                    // keep current answer
+                }
+            }
+        }
+
+        // Handle textual fallback tag: [VAULT_ACTION: {"action": "...", "path": "...", ...}]
+        const tagRegex = /\[VAULT_ACTION:\s*({[\s\S]*?})\]/g;
+        let match: RegExpExecArray | null;
+        while ((match = tagRegex.exec(answer)) !== null) {
+            try {
+                const parsed = JSON.parse(match[1]);
+                const execResult = await executeVaultAction(userId, authorName, parsed.action, parsed);
+                answer = answer.replace(match[0], `\n> *[Sistem Vault: ${execResult.message}]*\n`);
+            } catch {
+                // ignore json error
+            }
+        }
+
         if (!answer) {
             return 'Alya bingung mau jawab apa barusan xixixi~ Coba ulangi lagi ya! 🌸';
         }
