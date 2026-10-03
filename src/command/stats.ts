@@ -84,7 +84,7 @@ export async function createUnifiedStatsEmbed(targetUserId: string, targetUserna
 
 defineCommand({
     name: 'stats',
-    description: 'Lihat statistik terpadu kuis coding, wordle, dan geografi',
+    description: 'Statistik user',
     aliases: ['profil', 'profile', 'stat'],
     usages: ['', '[@user]'],
     async run(message: Message, args: string[]) {

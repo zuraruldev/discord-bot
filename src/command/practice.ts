@@ -106,7 +106,7 @@ export async function startPracticeQuestion(message: Message, topic?: CodingTopi
 
 defineCommand({
     name: 'practice',
-    description: 'Latihan 1 soal coding/devops/hardware secara acak tanpa memicu ujian',
+    description: 'Latihan soal',
     aliases: ['latihan', 'codepractice', 'drill'],
     usages: ['', '[php-basic | php-advance | devops | hardware]'],
     async run(message, args) {

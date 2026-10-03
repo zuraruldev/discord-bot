@@ -371,7 +371,7 @@ function showExamMenu(message: Message) {
 
 defineCommand({
     name: 'code',
-    description: 'Ujian resmi Coding Quiz (10 menit, 20 soal, lulus >= 90%)',
+    description: 'Code quiz',
     aliases: ['coding', 'quizcode', 'exam'],
     usages: ['', 'php-basic', 'php-advance', 'devops', 'hardware', 'list'],
     async run(message, args) {
@@ -420,7 +420,7 @@ defineCommand({
 
 defineCommand({
     name: 'php',
-    description: 'Ujian resmi PHP Quiz (Basic & Advance)',
+    description: 'PHP quiz',
     aliases: ['phpquiz'],
     usages: ['', 'basic', 'advance'],
     async run(message, args) {
@@ -434,7 +434,7 @@ defineCommand({
 
 defineCommand({
     name: 'devops',
-    description: 'Ujian resmi DevOps & Jaringan Server (10 menit, 20 soal)',
+    description: 'DevOps quiz',
     aliases: ['devopsquiz'],
     usages: [''],
     async run(message) {
@@ -444,7 +444,7 @@ defineCommand({
 
 defineCommand({
     name: 'hardware',
-    description: 'Ujian resmi Computer Hardware (10 menit, 20 soal)',
+    description: 'Computer hardware quiz',
     aliases: ['hw', 'computer', 'hardwarequiz'],
     usages: [''],
     async run(message) {

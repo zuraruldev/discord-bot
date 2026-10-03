@@ -6,7 +6,7 @@ import { reply } from '../utils';
 defineCommand({
     name: 'learn',
     aliases: ['materi', 'belajar'],
-    description: 'Pelajari materi persiapan ujian Coding Quiz',
+    description: 'Materi code quiz',
     usages: ['', '<topik> (php-basic, php-advance, devops, hardware)'],
     async run(message, args) {
         const inputTopic = args[0]?.toLowerCase();

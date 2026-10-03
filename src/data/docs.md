@@ -416,7 +416,7 @@ This JSON structure can be loaded into an LLM or conversational bot database to 
     "aliases": ["coding", "quizcode"],
     "syntax": "fx code [php [basic|advance] | devops | hardware | list]",
     "permission": "Everyone",
-    "description": "Interactive coding, devops, and computer hardware quiz.",
+    "description": "Code quiz",
     "examples": ["fx code", "fx code php basic", "fx code php advance", "fx code devops", "fx code hardware", "fx code list"]
   },
   {
@@ -425,7 +425,7 @@ This JSON structure can be loaded into an LLM or conversational bot database to 
     "aliases": ["phpquiz"],
     "syntax": "fx php [basic | advance]",
     "permission": "Everyone",
-    "description": "PHP programming quiz with basic and advance levels.",
+    "description": "PHP quiz",
     "examples": ["fx php", "fx php basic", "fx php advance"]
   },
   {
@@ -434,7 +434,7 @@ This JSON structure can be loaded into an LLM or conversational bot database to 
     "aliases": ["devopsquiz"],
     "syntax": "fx devops",
     "permission": "Everyone",
-    "description": "DevOps quiz covering IPv4/IPv6 networking, SSH, servers, Linux, Docker, etc.",
+    "description": "DevOps quiz",
     "examples": ["fx devops"]
   },
   {
@@ -443,7 +443,7 @@ This JSON structure can be loaded into an LLM or conversational bot database to 
     "aliases": ["hw", "computer", "hardwarequiz"],
     "syntax": "fx hardware",
     "permission": "Everyone",
-    "description": "Computer hardware quiz covering CPU, SATA, RAM, motherboards, etc.",
+    "description": "Computer hardware quiz",
     "examples": ["fx hardware", "fx hw"]
   },
   {
@@ -452,7 +452,7 @@ This JSON structure can be loaded into an LLM or conversational bot database to 
     "aliases": ["belajar", "materi"],
     "syntax": "fx learn [php-basic | php-advance | devops | hardware]",
     "permission": "Everyone",
-    "description": "Pelajari materi ujian Coding Quiz sebelum mengambil tes.",
+    "description": "Materi code quiz",
     "examples": ["fx learn", "fx learn php-basic", "fx learn devops"]
   },
   {
@@ -461,7 +461,7 @@ This JSON structure can be loaded into an LLM or conversational bot database to 
     "aliases": ["latihan", "codepractice", "drill"],
     "syntax": "fx practice [php-basic | php-advance | devops | hardware]",
     "permission": "Everyone",
-    "description": "Latihan 1 soal coding/devops/hardware secara acak tanpa mempengaruhi statistik ujian.",
+    "description": "Latihan soal",
     "examples": ["fx practice", "fx practice php", "fx practice devops", "fx practice hardware"]
   },
   {
@@ -470,7 +470,7 @@ This JSON structure can be loaded into an LLM or conversational bot database to 
     "aliases": ["profil", "profile", "stat"],
     "syntax": "fx stats [@user]",
     "permission": "Everyone",
-    "description": "Tampilkan profil statistik gabungan Coding Quiz, Wordle, dan Geografi.",
+    "description": "Statistik user",
     "examples": ["fx stats", "fx stats @user"]
   }
 ]
