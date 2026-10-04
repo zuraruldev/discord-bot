@@ -3,8 +3,10 @@ import { isAdmin, PREFIX } from '../constants';
 import { sendDailyReminder } from '../module/reminder';
 import {
     addScheduleItem,
+    buildReminderMessage,
     clearScheduleDay,
     getDayTimeInfo,
+    getIndonesianFormattedDate,
     getScheduleForDay,
     isWeekday,
     loadScheduleDb,
@@ -242,19 +244,14 @@ defineCommand({
             }
 
             const items = getScheduleForDay(db, normalized);
-            const capitalizedDay = normalized.charAt(0).toUpperCase() + normalized.slice(1);
-            const description = items.length > 0
-                ? items.map((it, idx) => `> **${idx + 1}. ${it.matkul}**\n> Waktu: ${it.time}\n> Tempat: ${it.tempat}`).join('\n\n')
-                : '> *Tidak ada jadwal mata kuliah pada hari ini.*';
-
-            return reply(message, {
-                embeds: [{
-                    title: `Jadwal Kuliah - ${capitalizedDay}`,
-                    description,
-                    color: 0x5865F2,
-                    timestamp: new Date().toISOString()
-                }]
+            const dateStr = getIndonesianFormattedDate(normalized, timeZone);
+            const formatted = buildReminderMessage({
+                header: (process.env.REMINDER_HEADER || db.header) as string | undefined,
+                dateStr,
+                items
             });
+
+            return reply(message, formatted);
         }
 
         if (!isWeekday(timeInfo.dayKey)) {
@@ -269,18 +266,13 @@ defineCommand({
         }
 
         const items = getScheduleForDay(db, timeInfo.dayKey);
-        const description = items.length > 0
-            ? items.map((it, idx) => `> **${idx + 1}. ${it.matkul}**\n> Waktu: ${it.time}\n> Tempat: ${it.tempat}`).join('\n\n')
-            : '> *Tidak ada jadwal mata kuliah hari ini.*';
-
-        return reply(message, {
-            embeds: [{
-                title: `Jadwal Kuliah Hari Ini - ${timeInfo.calendarStr}`,
-                description,
-                color: 0x5865F2,
-                footer: { text: `Gunakan "${PREFIX} matkul list" untuk melihat jadwal satu minggu` },
-                timestamp: new Date().toISOString()
-            }]
+        const dateStr = getIndonesianFormattedDate(timeInfo.dayKey, timeZone);
+        const formatted = buildReminderMessage({
+            header: (process.env.REMINDER_HEADER || db.header) as string | undefined,
+            dateStr,
+            items
         });
+
+        return reply(message, formatted);
     }
 });

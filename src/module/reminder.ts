@@ -1,7 +1,9 @@
 import { client } from '../Client';
 import { DEFAULT_REMINDER_USER_ID, PREFIX } from '../constants';
 import {
+    buildReminderMessage,
     getDayTimeInfo,
+    getIndonesianFormattedDate,
     getScheduleForDay,
     isWeekday,
     loadScheduleDb,
@@ -9,6 +11,16 @@ import {
     saveScheduleDb
 } from '../schedule/store';
 import { send } from '../utils';
+
+function formatPing(pingId?: string): string {
+    if (!pingId) return '';
+    const cleaned = pingId.trim();
+    if (!cleaned) return '';
+    if (cleaned === 'everyone' || cleaned === '@everyone') return '@everyone';
+    if (cleaned === 'here' || cleaned === '@here') return '@here';
+    if (cleaned.startsWith('<@') && cleaned.endsWith('>')) return cleaned;
+    return `<@${cleaned}>`;
+}
 
 export interface ReminderOptions {
     channelId?: string;
@@ -95,27 +107,19 @@ export async function sendDailyReminder(options: ReminderOptions = {}): Promise<
         };
     }
 
-    const description = items.length > 0
-        ? items.map((item, idx) => {
-            const header = items.length > 1 ? `> **${idx + 1}. ${item.matkul}**` : `> **${item.matkul}**`;
-            return `${header}\n> Waktu: ${item.time}\n> Tempat: ${item.tempat}`;
-        }).join('\n\n')
-        : '> *Tidak ada jadwal pembelajaran hari ini.*';
+    const dateStr = getIndonesianFormattedDate(targetDay, timeZone);
+    const reminderText = buildReminderMessage({
+        header: (process.env.REMINDER_HEADER || db.header) as string | undefined,
+        dateStr,
+        items
+    });
+
+    const pingStr = formatPing(pingUserId);
+    const messageContent = pingStr ? `${pingStr}\n\n${reminderText}` : reminderText;
 
     try {
         const messagePayload = {
-            content: `<@${pingUserId}>`,
-            embeds: [
-                {
-                    title: `Jadwal Kuliah - ${timeInfo.calendarStr}`,
-                    color: 0x5865F2,
-                    description,
-                    footer: {
-                        text: options.forced ? 'Automated Class Reminder (Forced Run)' : 'Automated Class Reminder - 5:00 AM'
-                    },
-                    timestamp: new Date().toISOString()
-                }
-            ]
+            content: messageContent
         };
 
         const sentMsg = await send(targetChannelId, messagePayload);

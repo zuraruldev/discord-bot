@@ -10,19 +10,22 @@ const DEFAULT_DB: ScheduleDatabase = {
     channelId: process.env.MATKUL_CHANNEL_ID || process.env.REMINDER_CHANNEL_ID || '',
     pingUserId: DEFAULT_REMINDER_USER_ID,
     timezone: 'Asia/Jakarta',
+    header: 'Teknik Informatika 1A🔥💻',
     schedule: {
          monday: [
             {
                 matkul: 'Keterampilan Komputer',
                 timeStarted: '07:30',
                 timeEnded: '11:10',
-                tempat: 'GTIL 5.7'
+                tempat: 'Gtil ruang 5.7',
+                type: 'Praktek'
             },
             {
-                matkul: 'Pancasila',
+                matkul: 'Pendidikan pancasila',
                 timeStarted: '13:50',
                 timeEnded: '15:30',
-                tempat: 'GKB 4.5'
+                tempat: 'Gkb ruang 4.5',
+                type: 'Teori'
             }
         ],
         tuesday: [
@@ -30,13 +33,15 @@ const DEFAULT_DB: ScheduleDatabase = {
                 matkul: 'Arsitektur Komputer',
                 timeStarted: '08:20',
                 timeEnded: '11:10',
-                tempat: 'GKB 4.6'
+                tempat: 'Gkb ruang 4.6',
+                type: 'Teori'
             },
             {
                 matkul: 'Bahasa Indonesia',
                 timeStarted: '13:50',
                 timeEnded: '15:30',
-                tempat: 'GKB 3.8'
+                tempat: 'Gkb ruang 3.8',
+                type: 'Teori'
             } 
         ],
         wednesday: [
@@ -44,19 +49,22 @@ const DEFAULT_DB: ScheduleDatabase = {
                 matkul: 'Algoritma Programming',
                 timeStarted: '09:25',
                 timeEnded: '10:15',
-                tempat: 'GKB 4.6'
+                tempat: 'Gkb ruang 4.6',
+                type: 'Teori'
             },
             {
                 matkul: 'Basis data',
                 timeStarted: '10:20',
                 timeEnded: '11:10',
-                tempat: 'GKB 4.6'
+                tempat: 'Gkb ruang 4.6',
+                type: 'Teori'
             },
             {
                 matkul: 'Algoritma programming',
                 timeStarted: '11:15',
                 timeEnded: '15:30',
-                tempat: 'GTIL 5.6'
+                tempat: 'Gtil ruang 5.6',
+                type: 'Praktek'
             }
         ],
         thursday: [
@@ -64,13 +72,15 @@ const DEFAULT_DB: ScheduleDatabase = {
                 matkul: 'Matematika Dasar',
                 timeStarted: '08:20',
                 timeEnded: '11:10',
-                tempat: 'GKB 3.8'
+                tempat: 'Gkb ruang 3.8',
+                type: 'Teori'
             },
             {
                 matkul: 'Pengantar Sistem Informasi',
                 timeStarted: '13:50',
                 timeEnded: '15:30',
-                tempat: 'GKB 4.2'
+                tempat: 'Gkb ruang 4.2',
+                type: 'Teori'
             }
         ],
         friday: [
@@ -78,7 +88,8 @@ const DEFAULT_DB: ScheduleDatabase = {
                 matkul: 'Basis Data',
                 timeStarted: '07:30',
                 timeEnded: '11:10',
-                tempat: 'GTIL 5.7'
+                tempat: 'Gtil ruang 5.7',
+                type: 'Praktek'
             }
         ]
     }
@@ -98,11 +109,20 @@ export async function loadScheduleDb(): Promise<ScheduleDatabase> {
         await ensureDir();
         const content = await readFile(DB_FILE, 'utf-8');
         const parsed = JSON.parse(content) as ScheduleDatabase;
+        let modified = false;
+        if (!parsed.header) {
+            parsed.header = 'Teknik Informatika 1A🔥💻';
+            modified = true;
+        }
         if (envChannel && parsed.channelId !== envChannel) {
             parsed.channelId = envChannel;
-            await saveScheduleDb(parsed);
+            modified = true;
         } else if (!parsed.channelId && envChannel) {
             parsed.channelId = envChannel;
+            modified = true;
+        }
+        if (modified) {
+            await saveScheduleDb(parsed);
         }
         return parsed;
     } catch {
@@ -194,29 +214,160 @@ export function getDayTimeInfo(date: Date = new Date(), timeZone = 'Asia/Jakarta
     return { dayKey, calendarStr, dateKey, hour, minute };
 }
 
+export const DAY_NAMES_ID: Record<string, string> = {
+    monday: 'Senin',
+    tuesday: 'Selasa',
+    wednesday: 'Rabu',
+    thursday: 'Kamis',
+    friday: 'Jumat',
+    saturday: 'Sabtu',
+    sunday: 'Minggu'
+};
+
+const DAY_INDEX: Record<string, number> = {
+    sunday: 0,
+    monday: 1,
+    tuesday: 2,
+    wednesday: 3,
+    thursday: 4,
+    friday: 5,
+    saturday: 6
+};
+
+export function getIndonesianFormattedDate(targetDayKey?: string, timeZone = 'Asia/Jakarta'): string {
+    const now = new Date();
+    const currentDayStr = new Intl.DateTimeFormat('en-US', { timeZone, weekday: 'long' }).format(now).toLowerCase();
+
+    let targetDate = now;
+    if (targetDayKey && targetDayKey.toLowerCase() !== currentDayStr) {
+        const currentIdx = DAY_INDEX[currentDayStr] ?? 1;
+        const targetIdx = DAY_INDEX[targetDayKey.toLowerCase()] ?? currentIdx;
+        const diff = targetIdx - currentIdx;
+        targetDate = new Date(now.getTime() + diff * 86400000);
+    }
+
+    const parts = new Intl.DateTimeFormat('id-ID', {
+        timeZone,
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+    }).formatToParts(targetDate);
+
+    const map = Object.fromEntries(parts.map(p => [p.type, p.value]));
+    return `${map.weekday}, ${map.day} ${map.month} ${map.year}`;
+}
+
+export function getItemType(raw: ScheduleItem): string {
+    if (raw.type) return raw.type;
+    if (raw.tipe) return raw.tipe;
+    const combined = `${raw.matkul || ''} ${raw.tempat || ''} ${raw.ruang || ''}`.toLowerCase();
+    if (combined.includes('praktek') || combined.includes('praktik')) return 'Praktek';
+    if (combined.includes('teori')) return 'Teori';
+    if (combined.includes('gtil') || combined.includes('lab')) return 'Praktek';
+    return 'Teori';
+}
+
+export function formatScheduleTime(raw: ScheduleItem | string, type?: string): string {
+    if (typeof raw === 'string') return raw;
+    let time = raw.time || raw.waktu || '';
+    if (!time && raw.timeStarted && raw.timeEnded) {
+        time = `${raw.timeStarted}-${raw.timeEnded}`;
+    } else if (!time && raw.timeStarted) {
+        time = raw.timeStarted;
+    } else if (!time) {
+        return '-';
+    }
+
+    const clean = time.replace(/\s*\([^)]*\)/g, '').trim().replace(/:/g, '.').replace(/\s*-\s*/g, '-');
+    if (type) {
+        return `${clean} (${type})`;
+    }
+    return clean;
+}
+
+export function formatScheduleRuang(raw: ScheduleItem | string, type?: string): string {
+    if (typeof raw === 'string') return raw;
+    let tempat = (raw.tempat || raw.place || raw.ruang || raw.location || '-').trim();
+
+    if (/\((praktek|praktik|teori)\)/i.test(tempat)) {
+        return tempat;
+    }
+
+    if (/^gtil[\s-]*(ruang\s*)?([0-9.]+)/i.test(tempat)) {
+        const m = tempat.match(/^gtil[\s-]*(ruang\s*)?([0-9.]+)/i);
+        if (m) tempat = `Gtil ruang ${m[2]}`;
+    } else if (/^gkb[\s-]*(ruang\s*)?([0-9.]+)/i.test(tempat)) {
+        const m = tempat.match(/^gkb[\s-]*(ruang\s*)?([0-9.]+)/i);
+        if (m) tempat = `Gkb ruang ${m[2]}`;
+    }
+
+    if (type && type.toLowerCase() === 'praktek') {
+        return `${tempat}(Praktek)`;
+    } else if (type) {
+        return `${tempat} (${type})`;
+    }
+    return tempat;
+}
+
 export function formatScheduleItem(raw: ScheduleItem | string): FormattedScheduleItem {
     if (typeof raw === 'string') {
         return {
             matkul: raw,
             time: '-',
-            tempat: '-'
+            tempat: '-',
+            type: 'Teori'
         };
     }
 
-    const matkul = raw.matkul || raw.subject || raw.course || raw.name || 'Mata Kuliah';
+    const rawMatkul = raw.matkul || raw.subject || raw.course || raw.name || 'Mata Kuliah';
+    const matkul = rawMatkul.toLowerCase() === 'pancasila' ? 'Pendidikan pancasila' : rawMatkul;
+    const type = getItemType(raw);
+    const time = formatScheduleTime(raw, type);
+    const tempat = formatScheduleRuang(raw, type);
 
-    let time = raw.time || raw.waktu || '';
-    if (!time && raw.timeStarted && raw.timeEnded) {
-        time = `${raw.timeStarted} - ${raw.timeEnded}`;
-    } else if (!time && raw.timeStarted) {
-        time = raw.timeStarted;
-    } else if (!time) {
-        time = '-';
+    return { matkul, time, tempat, type };
+}
+
+export function buildReminderMessage(options: {
+    header?: string;
+    dateStr: string;
+    items: FormattedScheduleItem[];
+}): string {
+    const header = options.header || 'Teknik Informatika 1A🔥💻';
+
+    if (options.items.length === 0) {
+        return `${header}
+💡 INFO JADWAL KELAS 💡
+
+Halo, teman-teman! 👋
+Berikut informasi jadwal kelas:
+
+📅 Hari/Tanggal: ${options.dateStr}
+*Tidak ada jadwal mata kuliah pada hari ini.*
+
+Mohon diperhatikan dan jangan sampai terlambat. Terima kasih!`;
     }
 
-    const tempat = raw.tempat || raw.place || raw.ruang || raw.location || '-';
+    const waktuLines = options.items.map((it, idx) => `${idx + 1}.${it.time}`).join('\n');
+    const matkulLines = options.items.map((it, idx) => `${idx + 1}.${it.matkul}`).join('\n');
+    const ruangLines = options.items.map((it, idx) => `${idx + 1}.${it.tempat}`).join('\n');
 
-    return { matkul, time, tempat };
+    return `${header}
+💡 INFO JADWAL KELAS 💡
+
+Halo, teman-teman! 👋
+Berikut informasi jadwal kelas:
+
+📅 Hari/Tanggal: ${options.dateStr}
+⏰ Waktu:
+${waktuLines}
+📚 Mata Kuliah:
+${matkulLines}
+📍 Ruangan:
+${ruangLines}
+
+Mohon diperhatikan dan jangan sampai terlambat. Terima kasih!`;
 }
 
 export function getScheduleForDay(db: ScheduleDatabase, dayKey: string): FormattedScheduleItem[] {
@@ -272,6 +423,10 @@ export async function addScheduleItem(day: string, item: ScheduleItem): Promise<
 
     if (list.length >= 3) {
         return { success: false, error: 'Maksimal 3 mata kuliah per hari telah tercapai', dayKey };
+    }
+
+    if (!item.type) {
+        item.type = getItemType(item);
     }
 
     list.push(item);
