@@ -26,6 +26,97 @@ export function createErrorEmbed(title: string, description: string): EmbedOptio
     return createBaseEmbed(title, description, 0xED4245);
 }
 
+export function splitMessage(text: string, maxLength = 1950): string[] {
+    if (text.length <= maxLength) return [text];
+
+    const chunks: string[] = [];
+    let remaining = text;
+
+    while (remaining.length > 0) {
+        if (remaining.length <= maxLength) {
+            chunks.push(remaining.trim());
+            break;
+        }
+
+        let splitIndex = -1;
+        const searchWindow = remaining.slice(0, maxLength);
+
+        // 1. Divider line (e.g. \n---\n or \n---)
+        const dividerMatch = [...searchWindow.matchAll(/\n---(?:\n|$)/g)].pop();
+        if (dividerMatch && dividerMatch.index !== undefined && dividerMatch.index > 200) {
+            splitIndex = dividerMatch.index + dividerMatch[0].length;
+        }
+
+        // 2. Section header (e.g. \n### )
+        if (splitIndex === -1) {
+            const headerMatch = [...searchWindow.matchAll(/\n(?=#{1,4}\s)/g)].pop();
+            if (headerMatch && headerMatch.index !== undefined && headerMatch.index > 200) {
+                splitIndex = headerMatch.index;
+            }
+        }
+
+        // 3. Double newline (paragraph break)
+        if (splitIndex === -1) {
+            const dblNewline = searchWindow.lastIndexOf('\n\n');
+            if (dblNewline > 200) {
+                splitIndex = dblNewline + 2;
+            }
+        }
+
+        // 4. Single newline
+        if (splitIndex === -1) {
+            const singleNewline = searchWindow.lastIndexOf('\n');
+            if (singleNewline > 200) {
+                splitIndex = singleNewline + 1;
+            }
+        }
+
+        // 5. Sentence end (. / ! / ?)
+        if (splitIndex === -1) {
+            const sentenceEnd = Math.max(
+                searchWindow.lastIndexOf('. '),
+                searchWindow.lastIndexOf('! '),
+                searchWindow.lastIndexOf('? ')
+            );
+            if (sentenceEnd > 200) {
+                splitIndex = sentenceEnd + 2;
+            }
+        }
+
+        // 6. Space
+        if (splitIndex === -1) {
+            const spaceIndex = searchWindow.lastIndexOf(' ');
+            if (spaceIndex > 0) {
+                splitIndex = spaceIndex + 1;
+            }
+        }
+
+        // 7. Hard cut fallback
+        if (splitIndex === -1) {
+            splitIndex = maxLength;
+        }
+
+        let chunk = remaining.slice(0, splitIndex).trim();
+        let nextRemaining = remaining.slice(splitIndex).trim();
+
+        // Handle open code blocks across chunks
+        const codeBlockCount = (chunk.match(/```/g) || []).length;
+        if (codeBlockCount % 2 !== 0) {
+            const lastOpening = chunk.lastIndexOf('```');
+            const lang = chunk.slice(lastOpening + 3).match(/^\w+/)?.[0] || '';
+            chunk += '\n```';
+            nextRemaining = '```' + lang + '\n' + nextRemaining;
+        }
+
+        if (chunk) {
+            chunks.push(chunk);
+        }
+        remaining = nextRemaining;
+    }
+
+    return chunks;
+}
+
 function uploadAsFileIfTooLong(options: CreateMessageOptions) {
     if (!options.content) return options;
 
@@ -51,6 +142,30 @@ export async function reply(message: Message, options: CreateMessageOptions | st
     if (typeof options === 'string') options = { content: options };
 
     try {
+        if (options.content && options.content.length > 2000 && (!options.files || options.files.length === 0)) {
+            const chunks = splitMessage(options.content, 1950);
+            if (chunks.length > 1) {
+                let firstResult: Message | undefined;
+                for (let i = 0; i < chunks.length; i++) {
+                    const chunk = chunks[i];
+                    if (i === 0) {
+                        firstResult = await reply(message, {
+                            ...options,
+                            content: chunk
+                        });
+                    } else {
+                        await new Promise(r => setTimeout(r, 250));
+                        if (message.channel) {
+                            await message.channel.createMessage({ content: chunk });
+                        } else {
+                            await client.rest.channels.createMessage(message.channelID, { content: chunk });
+                        }
+                    }
+                }
+                return firstResult;
+            }
+        }
+
         const oldReply = message.channel?.messages.toArray().find(m => m.author.id === client.user.id && m.messageReference?.messageID === message.id);
         if (oldReply) return await oldReply.edit(uploadAsFileIfTooLong(options));
 
@@ -65,6 +180,23 @@ export async function reply(message: Message, options: CreateMessageOptions | st
 
 export async function send(channelID: string, options: CreateMessageOptions | string) {
     if (typeof options === 'string') options = { content: options };
+
+    if (options.content && options.content.length > 2000 && (!options.files || options.files.length === 0)) {
+        const chunks = splitMessage(options.content, 1950);
+        if (chunks.length > 1) {
+            let firstResult: Message | undefined;
+            for (let i = 0; i < chunks.length; i++) {
+                const chunk = chunks[i];
+                if (i === 0) {
+                    firstResult = await send(channelID, { ...options, content: chunk });
+                } else {
+                    await new Promise(r => setTimeout(r, 250));
+                    await client.rest.channels.createMessage(channelID, { content: chunk });
+                }
+            }
+            return firstResult;
+        }
+    }
 
     return await client.rest.channels.createMessage(channelID, uploadAsFileIfTooLong(options));
 }
