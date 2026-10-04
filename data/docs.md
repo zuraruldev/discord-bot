@@ -77,7 +77,7 @@
 #### `fx alya`
 - Aliases: `ask`, `chat`, `a`
 - Permission: Everyone (Channel restricted to `1555508577945522206`)
-- Purpose: Interactive AI chat with Alisa Mikhailovna Kujou (Alya-san). Powered by local 9router AI. Expressive with emojis, witty, elegant, and playful. Automatically responds to pings, replies, name triggers (`alya`, `kujou`, `alisa`), or the command inside channel `1555508577945522206`.
+- Purpose: Interactive AI chat with Alisa Mikhailovna Kujou (Alya-san / Alyssa Novellia). Autonomous DevOps & Coding Agent companion: smart, playful, witty, and expressive with emojis, featuring structured technical breakdowns and Discord-style responses. Automatically responds to pings, replies, name triggers (`alya`, `kujou`, `alisa`), or the command inside channel `1555508577945522206`.
 - Syntax: `fx alya <pesan>` or `@Bot <pesan>` or mentioning `alya` / `kujou`
 - Examples:
   - `fx alya halo Alya`
@@ -253,7 +253,7 @@ This JSON structure can be loaded into an LLM or conversational bot database to 
     "aliases": ["ask", "chat", "a"],
     "syntax": "fx alya <pesan> atau @Bot <pesan>",
     "permission": "Everyone",
-    "description": "Chat with Alisa Mikhailovna Kujou (Alya-san). Features tsundere persona, Russian murmurs, and knowledge about bot commands.",
+    "description": "Chat with Alisa Mikhailovna Kujou (Alya-san / Alyssa Novellia). Autonomous DevOps & Coding Agent companion: witty, playful, and expressive with emojis, providing structured technical explanations.",
     "examples": [
       "fx alya halo Alya",
       "fx alya jelaskan tentang bot ini",

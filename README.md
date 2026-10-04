@@ -8,7 +8,7 @@ A multifunctional Discord bot written in TypeScript and Oceanic.js, featuring in
 
 ### 1. Alya AI Chatbot Companion
 - **Character**: Alisa Mikhailovna Kujou (Alya-san) from *Alya Sometimes Hides Her Feelings in Russian*.
-- **Persona & Tone**: Witty, elegant, smart, playful, and expressive with emojis. Communicates fluently in Indonesian, English, and Russian.
+- **Persona & Tone**: Autonomous DevOps & Coding Agent companion: smart, playful, witty, and expressive with emojis (`🌸✨😆`, `🌸💖🤖🛠️✨`, `😆🚀✨`, `🫡✨`), delivering structured, high-quality technical explanations in Discord Markdown. Communicates fluently in Indonesian, English, and Russian.
 - **Provider**: Powered by local 9router AI or any OpenAI-compatible API (`AI_API_BASE`, `AI_API_KEY`, `AI_MODEL`).
 - **Dedicated Channel**: Restricted to a designated channel (`CHAT_CHANNEL_ID`) to keep other server channels clean.
 - **Context-Aware**:
