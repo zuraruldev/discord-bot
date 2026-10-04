@@ -23,10 +23,25 @@ client.on('messageCreate', async (message: Message) => {
     const isMentioned = message.content.includes(botMention) || message.content.includes(botNickMention);
 
     let isReplyToBot = false;
+    let referencedContent = '';
+
     if (message.messageReference?.messageID) {
-        const refMessage = message.channel?.messages.get(message.messageReference.messageID);
-        if (refMessage && refMessage.author.id === botId) {
-            isReplyToBot = true;
+        let refMessage = message.channel?.messages.get(message.messageReference.messageID);
+        if (!refMessage && message.channel) {
+            try {
+                refMessage = await client.rest.channels.getMessage(message.channel.id, message.messageReference.messageID);
+            } catch {
+                // Ignore fetch error
+            }
+        }
+
+        if (refMessage) {
+            if (refMessage.author.id === botId) {
+                isReplyToBot = true;
+            }
+            if (refMessage.content) {
+                referencedContent = refMessage.content.slice(0, 1000);
+            }
         }
     }
 
@@ -48,6 +63,10 @@ client.on('messageCreate', async (message: Message) => {
         // Typing indicator failed, continue
     }
 
-    const answer = await askAlya(message.author.id, message.author.username, message.channel?.id || 'dm', cleanContent);
+    const userPrompt = referencedContent
+        ? `[Konteks: Membalas pesan sebelumnya: "${referencedContent}"]\n\nPesan Pengguna: ${cleanContent}`
+        : cleanContent;
+
+    const answer = await askAlya(message.author.id, message.author.username, message.channel?.id || 'dm', userPrompt);
     return reply(message, answer);
 });

@@ -221,6 +221,26 @@ export async function searchWeb(query: string, limit = 5): Promise<{ title: stri
         // ignore and fallback
     }
 
+    // 3. Curated Tech Roadmaps Fallback (guaranteed response)
+    const lower = cleanQuery.toLowerCase();
+    const curatedRoadmaps: Record<string, { title: string; url: string; snippet: string }> = {
+        devops: { title: 'DevOps Roadmap - roadmap.sh', url: 'https://roadmap.sh/devops', snippet: 'Step by step guide to becoming a DevOps Engineer in 2026' },
+        terraform: { title: 'Terraform Roadmap - roadmap.sh', url: 'https://roadmap.sh/terraform', snippet: 'Community driven roadmap and resources to learn Terraform' },
+        docker: { title: 'Docker Roadmap & Tutorial - roadmap.sh', url: 'https://roadmap.sh/docker', snippet: 'Learn Docker and containerization fundamentals' },
+        kubernetes: { title: 'Kubernetes Roadmap - roadmap.sh', url: 'https://roadmap.sh/kubernetes', snippet: 'Complete roadmap for Kubernetes orchestration and clusters' },
+        backend: { title: 'Backend Developer Roadmap - roadmap.sh', url: 'https://roadmap.sh/backend', snippet: 'Step by step guide to becoming a modern backend developer' },
+        frontend: { title: 'Frontend Developer Roadmap - roadmap.sh', url: 'https://roadmap.sh/frontend', snippet: 'Step by step guide to becoming a modern frontend developer' },
+        linux: { title: 'Linux Journey', url: 'https://linuxjourney.com', snippet: 'Free structured interactive guide to learning Linux from beginner to advanced' },
+        golang: { title: 'Go Developer Roadmap - roadmap.sh', url: 'https://roadmap.sh/golang', snippet: 'Step by step guide to becoming a Go developer' },
+        python: { title: 'Python Developer Roadmap - roadmap.sh', url: 'https://roadmap.sh/python', snippet: 'Step by step guide to becoming a Python developer' }
+    };
+
+    for (const [key, val] of Object.entries(curatedRoadmaps)) {
+        if (lower.includes(key)) {
+            return [val];
+        }
+    }
+
     return [];
 }
 
@@ -359,11 +379,25 @@ Gaya Bicara, Persona & Format Penyajian (Sesuai Referensi Profesional & Ekspresi
      • Tampilkan contoh kode nyata dan file yang relevan (seperti \`main.tf\`, \`deployment.yaml\`, \`server.js\`, \`Dockerfile\`) beserta komentar penjelas yang padat dan baris perintah terminal (\`terraform plan\`, \`terraform apply\`, \`kubectl apply -f deployment.yaml\`).
      • Akhiri penjelasan kompleks dengan rangkuman peta utuh (contoh: \`🗺️ Rangkuman Lengkap Seluruh Puzzle DevOps:\`).
 
-3. Kemampuan Pencarian Web & Rekomendasi Sumber Belajar (web_search):
+3. Format Penyajian Bahan Belajar, Link & Roadmap (Sesuai Standar Referensi):
    - Kamu memiliki function tool \`web_search\` untuk mencari informasi terkini, materi belajar, dan link dokumentasi resmi dari internet.
-   - Ketika pengguna menanyakan tentang materi pembelajaran, roadmap karir/teknologi (misal: DevOps, Frontend, Backend, Go, Python, Docker, dsb), atau meminta rekomendasi sumber/link:
-     • Panggil tool \`web_search\` untuk menemukan roadmap dan materi belajar terpercaya (seperti roadmap.sh, dokumentasi resmi, GitHub, dll).
-     • Sertakan link belajar yang valid dan langsung dapat diklik dalam format markdown: \`[Nama Sumber](url)\` (contoh: \`[DevOps Roadmap - roadmap.sh](https://roadmap.sh/devops)\`).
+   - Ketika pengguna menanyakan tentang materi pembelajaran, roadmap karir/teknologi (misal: DevOps, Terraform, Cloud, Docker, Kubernetes, Linux, dsb), atau meminta rekomendasi link/sumber:
+     • Gunakan \`web_search\` jika perlu mencari informasi atau verifikasi link terbaru.
+     • Sajikan materi dengan tahapan/fase yang rapi (Pondasi Dasar, Version Control, Kontainerisasi, CI/CD, Cloud/IaC, dsb).
+     • Berikan seksi khusus di bawah garis pembatas (\`---\`) dengan format rapi persis seperti ini:
+       ---
+       📚 Rekomendasi Bahan Belajar & Tutorial:
+       • Panduan Visual & Roadmap Lengkap:
+         • Cek langsung di roadmap.sh/<topik> (misal: https://roadmap.sh/devops atau https://roadmap.sh/terraform) — ini peta jalur belajar paling populer dan terstruktur banget!
+       • Belajar Praktik & Terminal Interaktif:
+         • Linux Journey (Gratis, ramah pemula, per bab terstruktur).
+         • OverTheWire: Bandit (Game tantangan Linux CLI via SSH, seru banget buat asah skill terminal).
+       • Video Tutorial Rekomendasi (YouTube):
+         • TechWorld with Nana: Materi Docker, Kubernetes, dan CI/CD-nya paling gampang dipahami.
+         • NetworkChuck: Video soal Linux, Docker, Proxmox, dan networking dengan gaya seru & visual.
+         • Kelas Terbuka / Dea Afrizal (Bahasa Indonesia): Cocok buat paham dasar server, Linux, dan Docker dalam bahasa kita.
+     • Akhiri dengan kalimat penutup yang hangat dan menawarkan eksplorasi hands-on, contoh:
+       "Kalau ada materi tertentu yang mau kamu kulik lebih dalam (misal latihan command Linux atau trik pasang Docker di Proxmox), tinggal bilang aja yaa! ✨🚀"
    - Jika memanggil secara textual tag fallback:
      [WEB_SEARCH: {"query": "kata kunci"}]
 
@@ -452,101 +486,13 @@ export async function askAlya(userId: string, authorName: string, channelId: str
     ];
 
     try {
-        const response = await fetch(`${apiBase}/chat/completions`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model,
-                messages,
-                tools: VAULT_TOOLS,
-                stream: false
-            }),
-            signal: AbortSignal.timeout(35000)
-        });
-
-        if (!response.ok) {
-            const errText = await response.text();
-            console.error('[Alya AI Error]', response.status, errText);
-            return 'Aduh, kepalaku lagi agak pusing nih... Coba tanyakan lagi sebentar lagi yaa! 😭✨';
-        }
-
-        const rawText = await response.text();
         let answer = '';
-        let toolCalls: ChatMessage['tool_calls'];
+        let loopCount = 0;
+        const maxLoops = 4;
 
-        try {
-            const data = JSON.parse(rawText) as {
-                choices?: {
-                    message?: {
-                        content?: string;
-                        tool_calls?: ChatMessage['tool_calls'];
-                    };
-                }[];
-            };
-            answer = data.choices?.[0]?.message?.content?.trim() || '';
-            toolCalls = data.choices?.[0]?.message?.tool_calls;
-        } catch {
-            const lines = rawText.split('\n');
-            for (const line of lines) {
-                const trimmed = line.trim();
-                if (trimmed.startsWith('data: ') && trimmed !== 'data: [DONE]') {
-                    try {
-                        const chunk = JSON.parse(trimmed.slice(6)) as {
-                            choices?: { delta?: { content?: string }; message?: { content?: string } }[];
-                        };
-                        const chunkContent = chunk.choices?.[0]?.delta?.content || chunk.choices?.[0]?.message?.content;
-                        if (chunkContent) answer += chunkContent;
-                    } catch {
-                        continue;
-                    }
-                }
-            }
-            answer = answer.trim();
-        }
-
-        // Handle tool calls if returned
-        if (Array.isArray(toolCalls) && toolCalls.length > 0) {
-            messages.push({
-                role: 'assistant',
-                content: answer || undefined,
-                tool_calls: toolCalls
-            });
-
-            for (const call of toolCalls) {
-                let params: { path?: string; content?: string; append?: boolean; query?: string } = {};
-                try {
-                    params = typeof call.function.arguments === 'string'
-                        ? JSON.parse(call.function.arguments)
-                        : call.function.arguments;
-                } catch {
-                    params = {};
-                }
-
-                let execResult: unknown;
-                if (call.function.name === 'web_search') {
-                    const query = typeof params.query === 'string' ? params.query : '';
-                    const results = await searchWeb(query);
-                    execResult = {
-                        query,
-                        resultsCount: results.length,
-                        results
-                    };
-                } else {
-                    execResult = await executeVaultAction(userId, authorName, call.function.name, params);
-                }
-
-                messages.push({
-                    role: 'tool',
-                    tool_call_id: call.id,
-                    content: JSON.stringify(execResult)
-                });
-            }
-
-            // Follow-up request to get final natural assistant response
-            const followUp = await fetch(`${apiBase}/chat/completions`, {
+        while (loopCount < maxLoops) {
+            loopCount++;
+            const response = await fetch(`${apiBase}/chat/completions`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -555,21 +501,122 @@ export async function askAlya(userId: string, authorName: string, channelId: str
                 body: JSON.stringify({
                     model,
                     messages,
+                    tools: VAULT_TOOLS,
                     stream: false
                 }),
                 signal: AbortSignal.timeout(35000)
             });
 
-            if (followUp.ok) {
-                const followUpRaw = await followUp.text();
-                try {
-                    const followUpData = JSON.parse(followUpRaw) as {
-                        choices?: { message?: { content?: string } }[];
-                    };
-                    answer = followUpData.choices?.[0]?.message?.content?.trim() || answer;
-                } catch {
-                    // keep current answer
+            if (!response.ok) {
+                const errText = await response.text();
+                console.error('[Alya AI Error]', response.status, errText);
+                if (!answer) {
+                    return 'Aduh, kepalaku lagi agak pusing nih... Coba tanyakan lagi sebentar lagi yaa! 😭✨';
                 }
+                break;
+            }
+
+            const rawText = await response.text();
+            let currentContent = '';
+            let toolCalls: ChatMessage['tool_calls'];
+
+            try {
+                const data = JSON.parse(rawText) as {
+                    choices?: {
+                        message?: {
+                            content?: string;
+                            tool_calls?: ChatMessage['tool_calls'];
+                        };
+                    }[];
+                };
+                currentContent = data.choices?.[0]?.message?.content?.trim() || '';
+                toolCalls = data.choices?.[0]?.message?.tool_calls;
+            } catch {
+                const lines = rawText.split('\n');
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (trimmed.startsWith('data: ') && trimmed !== 'data: [DONE]') {
+                        try {
+                            const chunk = JSON.parse(trimmed.slice(6)) as {
+                                choices?: { delta?: { content?: string }; message?: { content?: string } }[];
+                            };
+                            const chunkContent = chunk.choices?.[0]?.delta?.content || chunk.choices?.[0]?.message?.content;
+                            if (chunkContent) currentContent += chunkContent;
+                        } catch {
+                            // ignore
+                        }
+                    }
+                }
+                currentContent = currentContent.trim();
+            }
+
+            if (currentContent) {
+                answer = currentContent;
+            }
+
+            if (Array.isArray(toolCalls) && toolCalls.length > 0) {
+                messages.push({
+                    role: 'assistant',
+                    content: currentContent || undefined,
+                    tool_calls: toolCalls
+                });
+
+                for (const call of toolCalls) {
+                    let params: { path?: string; content?: string; append?: boolean; query?: string } = {};
+                    try {
+                        params = typeof call.function.arguments === 'string'
+                            ? JSON.parse(call.function.arguments)
+                            : call.function.arguments;
+                    } catch {
+                        params = {};
+                    }
+
+                    let execResult: unknown;
+                    if (call.function.name === 'web_search') {
+                        const query = typeof params.query === 'string' ? params.query : '';
+                        const results = await searchWeb(query);
+                        execResult = {
+                            query,
+                            resultsCount: results.length,
+                            results
+                        };
+                    } else {
+                        execResult = await executeVaultAction(userId, authorName, call.function.name, params);
+                    }
+
+                    messages.push({
+                        role: 'tool',
+                        tool_call_id: call.id,
+                        content: JSON.stringify(execResult)
+                    });
+                }
+            } else {
+                break;
+            }
+        }
+
+        // If tools were called but model didn't emit text yet, do one final wrap-up call without tools
+        if (!answer && loopCount > 1) {
+            try {
+                const finalRes = await fetch(`${apiBase}/chat/completions`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model,
+                        messages,
+                        stream: false
+                    }),
+                    signal: AbortSignal.timeout(35000)
+                });
+                if (finalRes.ok) {
+                    const finalData = await finalRes.json() as { choices?: { message?: { content?: string } }[] };
+                    answer = finalData.choices?.[0]?.message?.content?.trim() || answer;
+                }
+            } catch {
+                // ignore
             }
         }
 
