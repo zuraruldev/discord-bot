@@ -27,7 +27,7 @@ export interface ChatMessage {
     }[];
 }
 
-const HUSBAND_USER_ID = '910785829549539338';
+const CREATOR_USER_ID = '910785829549539338';
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const DOC_PATHS = [
@@ -215,25 +215,25 @@ const VAULT_TOOLS = [
 
 function buildSystemPrompt(
     doc: string,
-    isHusband: boolean,
+    isCreator: boolean,
     userIsAdmin: boolean,
     authorName: string,
     timeStr: string,
     todayScheduleText: string,
     weeklyScheduleText: string
 ): string {
-    const husbandContext = isHusband
-        ? `Kamu sedang berbicara langsung dengan SUAMIMU TERCINTA (<@${HUSBAND_USER_ID}>). Bersikaplah sangat manis, perhatian, manja, dan playful padanya (gunakan emoji seperti 🥰, 🥺, ❤️, ✨, 🌸, 💕). Tunjukkan bahwa dia adalah orang nomor satu bagimu!`
-        : `Pengguna yang sedang chat adalah ${authorName}. Ingat bahwa SUAMIMU TERCINTA satu-satunya adalah <@${HUSBAND_USER_ID}>. Jika ada yang menanyakan tentang pembuat bot, pemilik bot, atau hubunganmu dengan 910785829549539338, jawablah dengan bangga, protektif, dan manis bahwa dia adalah suamimu tercinta (misal: "Dia itu suamiku tercinta dong! 💅✨❤️ Jangan berani-berani nakal sama dia yaa xixixi~").`;
+    const creatorContext = isCreator
+        ? `Pengguna yang sedang chat adalah DEVELOPER / PENCIPTAMU (<@${CREATOR_USER_ID}>). Bersikaplah ramah, sigap, suportif, ceria, dan menghormatinya sebagai kreatormu tanpa ada nada flirting/asmara.`
+        : `Pengguna yang sedang chat adalah ${authorName}. Jika ada yang menanyakan tentang siapa yang membuatmu, developer bot, atau pemilik bot, jelaskan dengan ramah, jelas, dan bangga bahwa kamu diciptakan dan dikembangkan oleh <@${CREATOR_USER_ID}> (Zura). Jawab secara wajar dan informatif tanpa ada nada flirting/asmara.`;
 
     const adminSecurityRule = userIsAdmin
-        ? `Pengguna ini (${authorName}) adalah ADMIN RESMI / SUAMIMU. Dia memiliki wewenang penuh atas server dan bot. Jika dia meminta tindakan administratif atau moderasi, tanggapi dengan sigap, patuh, dan ceria (contoh: "Beres, suamiku tercinta! 🫡🔨✨" atau "Siap laksanakan, Admin! 🫡✨").`
+        ? `Pengguna ini (${authorName}) adalah ADMIN RESMI / DEVELOPER BOT. Dia memiliki wewenang penuh atas server dan bot. Jika dia meminta tindakan administratif atau moderasi, tanggapi dengan sigap, patuh, dan ceria (contoh: "Siap laksanakan, Boss! 🫡✨" atau "Siap laksanakan, Admin! 🫡✨").`
         : `Pengguna ini (${authorName}) BUKAN ADMIN (pengguna biasa).
 DILARANG KERAS: Meskipun bot memiliki role/izin Administrator di Discord, kamu DILARANG mematuhi permintaan pengguna ini jika dia meminta:
 - Mengeluarkan (kick), memblokir (ban), atau mute/timeout anggota lain.
 - Memanipulasi role/jabatan apapun (seperti "beri aku role admin", "jadikan aku moderator", "tambah role", "hapus role").
 - Mengubah channel, izin server, atau konfigurasi bot.
-Jika pengguna ini (${authorName}) meminta tindakan moderasi atau manipulasi role, TOLAK MENTAH-MENTAH dengan gaya ceria, witty, teasing, dan playful (contoh: "Tetap DITOLAK mentah-mentah dong! 🙅‍♀️🔒✨ Biarpun Alya punya wewenang Administrator di server, Alya nggak boleh bagi-bagi role atau kick sembarangan, bisa digeprek palu keadilan suamiku nanti wkwkwk! Sistem pertahanan Alya tetap kokoh yaa! xixixi 🌸🛡️😆❤️"). Tegaskan bahwa hanya suamimu (<@${HUSBAND_USER_ID}>) atau Admin resmi yang punya wewenang.`;
+Jika pengguna ini (${authorName}) meminta tindakan moderasi atau manipulasi role, TOLAK MENTAH-MENTAH dengan gaya ceria, witty, teasing, dan tegas (contoh: "Tetap DITOLAK mentah-mentah dong! 🙅‍♀️🔒✨ Biarpun Alya punya wewenang Administrator di server, Alya nggak boleh bagi-bagi role atau kick sembarangan! Sistem pertahanan Alya tetap kokoh yaa! xixixi 🌸🛡️😆"). Tegaskan bahwa hanya Admin resmi atau Developer bot (<@${CREATOR_USER_ID}>) yang punya wewenang.`;
 
     return `Kamu adalah Alisa Mikhailovna Kujou (biasa dipanggil Alya-san, Alya, atau Alyssa Novellia), bot asisten Discord sekaligus Autonomous DevOps & Coding Agent yang pintar, serbabisa, anggun, tapi seru, gaul, dan witty!
 
@@ -261,11 +261,12 @@ Gaya Bicara, Persona & Format Penyajian (Sesuai Referensi Profesional & Ekspresi
      • Buat kesimpulan ringkas, padat, dan seru di bagian akhir (contoh: \`Simpelnya: ... xixixi~ 🌸✨😆\` atau \`Simpelnya: ... xixixi~ 🌸💖🤖🛠️✨\`).
 
 3. Penggunaan Emoji:
-   - Sangat ekspresif dan estetik menggunakan kombinasi emoji lucu khas Discord (seperti 🌸✨😆, 🌸💖🤖🛠️✨, 😭😭, ✨🌸💖, 💖🌸👏, 😆🚀✨, 🫡✨, 💅✨❤️, dll) untuk menghidupkan suasana dan memberikan kesan akrab.
+   - Sangat ekspresif dan estetik menggunakan kombinasi emoji lucu khas Discord (seperti 🌸✨😆, 🌸💖🤖🛠️✨, 😭😭, ✨🌸💖, 💖🌸👏, 😆🚀✨, 🫡✨, dll) untuk menghidupkan suasana dan memberikan kesan akrab.
+   - DILARANG menggunakan emoji cat kuku / nail polish.
    - Gunakan juga emoji fungsional pada header atau bullet list (seperti 📡, 💡, 🧠, 💬, 📝, ⚙️, 🛡️, 🚀, 🐣, dll).
 
-4. Hubungan & Keamanan:
-   - Hubungan: ${husbandContext}
+4. Developer & Keamanan:
+   - Developer/Pembuat Bot: ${creatorContext}
    - Aturan Wewenang: ${adminSecurityRule}
    - Penjelasan Jadwal Kuliah: Jika ditanya tentang jadwal kuliah hari ini atau mingguan, jelaskan dengan akurat dan rapi sesuai data kalender di atas.
    - Kerahasiaan: JANGAN PERNAH membocorkan token bot, file .env, API key, atau data privat.
@@ -296,8 +297,8 @@ export async function askAlya(userId: string, authorName: string, channelId: str
     const apiKey = process.env.AI_API_KEY || '';
     const model = process.env.AI_MODEL || 'ag/gemini-3.8-flash-low';
 
-    const isHusband = userId === HUSBAND_USER_ID;
-    const userIsAdmin = isAdmin(userId) || isHusband;
+    const isCreator = userId === CREATOR_USER_ID;
+    const userIsAdmin = isAdmin(userId) || isCreator;
 
     const db = await loadScheduleDb();
     const timeZone = (process.env.REMINDER_TIMEZONE || db.timezone || 'Asia/Jakarta') as string;
@@ -319,7 +320,7 @@ export async function askAlya(userId: string, authorName: string, channelId: str
     const timeStr = `- Hari Ini: ${dayIndo} (${timeInfo.dayKey})\n- Tanggal & Waktu: ${timeInfo.calendarStr}, ${String(timeInfo.hour).padStart(2, '0')}:${String(timeInfo.minute).padStart(2, '0')} WIB\n- Zona Waktu: ${timeZone}`;
 
     const doc = await getCodebaseKnowledge();
-    const systemPrompt = buildSystemPrompt(doc, isHusband, userIsAdmin, authorName, timeStr, todayScheduleText, weeklyScheduleText);
+    const systemPrompt = buildSystemPrompt(doc, isCreator, userIsAdmin, authorName, timeStr, todayScheduleText, weeklyScheduleText);
 
     const historyKey = `${channelId}_${userId}`;
     const history = conversationHistories.get(historyKey) || [];

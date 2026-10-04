@@ -39,7 +39,7 @@ client.on('messageCreate', async (message: Message) => {
         .trim();
 
     if (!cleanContent) {
-        return reply(message, 'Halo! Ada apa manggil Alya nih? Mau ngobrol atau butuh bantuan? xixixi~ 💅✨');
+        return reply(message, 'Halo! Ada apa manggil Alya nih? Mau ngobrol atau butuh bantuan? xixixi~ 🌸✨');
     }
 
     try {

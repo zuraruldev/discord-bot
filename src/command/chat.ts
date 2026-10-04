@@ -11,7 +11,7 @@ defineCommand({
     async run(message, args) {
         const allowedChannelId = process.env.CHAT_CHANNEL_ID || '1555508577945522206';
         if (message.channel?.id !== allowedChannelId) {
-            return reply(message, `Ngobrol santai bareng Alya cuma bisa di channel <#${allowedChannelId}> yaa! Yuk pindah ke sana xixixi~ 💅✨`);
+            return reply(message, `Ngobrol santai bareng Alya cuma bisa di channel <#${allowedChannelId}> yaa! Yuk pindah ke sana xixixi~ 🌸✨`);
         }
 
         const query = args.join(' ').trim();

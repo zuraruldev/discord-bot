@@ -85,7 +85,7 @@
 - Examples:
   - `fx alya halo Alya`
   - `alya bagaimana cara menggunakan command vault?`
-  - `@Bot siapa suamimu?`
+  - `@Bot siapa yang membuatmu?`
   - `alya tolong jelasin jadwal kuliah hari ini dong`
 
 #### `fx matkul`
@@ -276,7 +276,7 @@ This JSON structure can be loaded into an LLM or conversational bot database to 
     "examples": [
       "fx alya halo Alya",
       "fx alya jelaskan tentang bot ini",
-      "fx alya siapa suamimu?"
+      "fx alya siapa yang membuatmu?"
     ]
   },
   {
