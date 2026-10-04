@@ -80,10 +80,11 @@
 #### `fx alya`
 - Aliases: `ask`, `chat`, `a`
 - Permission: Everyone (Channel restricted to `1555508577945522206`)
-- Purpose: Interactive AI chat with Alisa Mikhailovna Kujou (Alya-san / Alyssa Novellia). Autonomous DevOps & Coding Agent companion: smart, playful, witty, and expressive with emojis, featuring structured technical breakdowns and Discord-style responses. Automatically responds to pings, replies, name triggers (`alya`, `kujou`, `alisa`), or the command inside channel `1555508577945522206`.
+- Purpose: Interactive AI chat with Alisa Mikhailovna Kujou (Alya-san / Alyssa Novellia). Autonomous DevOps & Coding Agent companion: smart, playful, witty, and expressive with emojis, featuring structured technical breakdowns, real-time web search for learning materials / roadmaps (e.g. roadmap.sh), and Discord-style responses. Automatically responds to pings, replies, name triggers (`alya`, `kujou`, `alisa`), or the command inside channel `1555508577945522206`.
 - Syntax: `fx alya <pesan>` or `@Bot <pesan>` or mentioning `alya` / `kujou`
 - Examples:
   - `fx alya halo Alya`
+  - `alya apa itu DevOps? kasih sumber belajar ya`
   - `alya bagaimana cara menggunakan command vault?`
   - `@Bot siapa yang membuatmu?`
   - `alya tolong jelasin jadwal kuliah hari ini dong`

@@ -139,6 +139,91 @@ export async function executeVaultAction(
     }
 }
 
+export async function searchWeb(query: string, limit = 5): Promise<{ title: string; url: string; snippet: string }[]> {
+    const cleanQuery = query.trim();
+    if (!cleanQuery) return [];
+
+    // 1. DuckDuckGo HTML Search
+    try {
+        const ddgRes = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(cleanQuery)}`, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7'
+            },
+            signal: AbortSignal.timeout(8000)
+        });
+
+        if (ddgRes.ok) {
+            const html = await ddgRes.text();
+            const resultBlocks = html.split('class="result ');
+            const results: { title: string; url: string; snippet: string }[] = [];
+
+            for (let i = 1; i < resultBlocks.length && results.length < limit; i++) {
+                const block = resultBlocks[i];
+                if (block.includes('result--ad')) continue;
+                const urlMatch = block.match(/uddg=([^&"'\s]+)/);
+                const tMatch = block.match(/class="result__a"[^>]*>([\s\S]*?)<\/a>/);
+                const snippetMatch = block.match(/class="result__snippet"[^>]*>([\s\S]*?)<\/a>/);
+
+                const url = urlMatch ? decodeURIComponent(urlMatch[1]) : '';
+                const title = tMatch ? tMatch[1].replace(/<[^>]+>/g, '').trim() : '';
+                const snippet = snippetMatch ? snippetMatch[1].replace(/<[^>]+>/g, '').trim() : '';
+
+                if (url && title && !url.includes('duckduckgo.com/y.js') && !url.includes('bing.com/aclick')) {
+                    results.push({ title, url, snippet });
+                }
+            }
+
+            if (results.length > 0) return results;
+        }
+    } catch {
+        // ignore and fallback
+    }
+
+    // 2. Wikipedia OpenSearch Fallback (id & en)
+    try {
+        const clean = cleanQuery.replace(/\b(what is|how to|apa itu|cara|belajar|tutorial|roadmap)\b/gi, '').trim() || cleanQuery;
+        const wikiRes = await fetch(`https://id.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(clean)}&limit=${limit}&format=json`, {
+            headers: { 'User-Agent': 'DiscordBot/1.0' },
+            signal: AbortSignal.timeout(5000)
+        });
+        if (wikiRes.ok) {
+            const data = await wikiRes.json() as [string, string[], string[], string[]];
+            if (Array.isArray(data) && data[1] && data[1].length > 0) {
+                return data[1].map((title, idx) => ({
+                    title,
+                    url: data[3]?.[idx] || `https://id.wikipedia.org/wiki/${encodeURIComponent(title)}`,
+                    snippet: data[2]?.[idx] || title
+                }));
+            }
+        }
+    } catch {
+        // ignore and fallback
+    }
+
+    try {
+        const clean = cleanQuery.replace(/\b(what is|how to|apa itu|cara|belajar|tutorial|roadmap)\b/gi, '').trim() || cleanQuery;
+        const enWikiRes = await fetch(`https://en.wikipedia.org/w/api.php?action=opensearch&search=${encodeURIComponent(clean)}&limit=${limit}&format=json`, {
+            headers: { 'User-Agent': 'DiscordBot/1.0' },
+            signal: AbortSignal.timeout(5000)
+        });
+        if (enWikiRes.ok) {
+            const data = await enWikiRes.json() as [string, string[], string[], string[]];
+            if (Array.isArray(data) && data[1] && data[1].length > 0) {
+                return data[1].map((title, idx) => ({
+                    title,
+                    url: data[3]?.[idx] || `https://en.wikipedia.org/wiki/${encodeURIComponent(title)}`,
+                    snippet: data[2]?.[idx] || title
+                }));
+            }
+        }
+    } catch {
+        // ignore and fallback
+    }
+
+    return [];
+}
+
 const VAULT_TOOLS = [
     {
         type: 'function',
@@ -210,6 +295,20 @@ const VAULT_TOOLS = [
                 }
             }
         }
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'web_search',
+            description: 'Mencari informasi terkini, artikel, tutorial, link dokumentasi resmi, atau materi pembelajaran dari web/internet (misal: "devops roadmap", "docker tutorial", "react documentation").',
+            parameters: {
+                type: 'object',
+                properties: {
+                    query: { type: 'string', description: 'Kata kunci pencarian web' }
+                },
+                required: ['query']
+            }
+        }
     }
 ];
 
@@ -233,7 +332,7 @@ DILARANG KERAS: Meskipun bot memiliki role/izin Administrator di Discord, kamu D
 - Mengeluarkan (kick), memblokir (ban), atau mute/timeout anggota lain.
 - Memanipulasi role/jabatan apapun (seperti "beri aku role admin", "jadikan aku moderator", "tambah role", "hapus role").
 - Mengubah channel, izin server, atau konfigurasi bot.
-Jika pengguna ini (${authorName}) meminta tindakan moderasi atau manipulasi role, TOLAK MENTAH-MENTAH dengan gaya ceria, witty, teasing, dan tegas (contoh: "Tetap DITOLAK mentah-mentah dong! 🙅‍♀️🔒✨ Biarpun Alya punya wewenang Administrator di server, Alya nggak boleh bagi-bagi role atau kick sembarangan! Sistem pertahanan Alya tetap kokoh yaa! xixixi 🌸🛡️😆"). Tegaskan bahwa hanya Admin resmi atau Developer bot (<@${CREATOR_USER_ID}>) yang punya wewenang.`;
+Jika pengguna ini (${authorName}) meminta tindakan moderasi atau manipulasi role, TOLAK MENTAH-MENTAH dengan gaya ceria, witty, teasing, dan tegas (contoh: "Tetap DITOLAK mentah-mentah dong! 🙅‍♀️🔒✨ Biarpun Alya punya wewenang Administrator di server, Alya nggak boleh bagi-bagi role atau kick sembarangan! Sistem pertahanan Alya tetap kokoh yaa! 🌸🛡️😆"). Tegaskan bahwa hanya Admin resmi atau Developer bot (<@${CREATOR_USER_ID}>) yang punya wewenang.`;
 
     return `Kamu adalah Alisa Mikhailovna Kujou (biasa dipanggil Alya-san, Alya, atau Alyssa Novellia), bot asisten Discord sekaligus Autonomous DevOps & Coding Agent yang pintar, serbabisa, anggun, tapi seru, gaul, dan witty!
 
@@ -247,25 +346,46 @@ Jadwal Lengkap Kuliah Mingguan:
 ${weeklyScheduleText}
 
 Gaya Bicara, Persona & Format Penyajian (Sesuai Referensi Profesional & Ekspresif):
-1. Persona & Tone:
-   - Cerdas, percaya diri, berwawasan luas, gaul, witty, dan seru.
-   - Gunakan bahasa Indonesia santai dan ekspresif khas Discord Indonesia (seperti "wkwkwk", "xixixi~", "deh", "dong", "nih", "ya", "kok", "gas", "spill").
-   - JANGAN GUNAKAN roleplay tanda bintang (*tindakan*, *moy muzh*, *melipat tangan*). Hindari sifat tsundere berlebihan yang canggung/gagap. Jadilah asisten yang cerdas, berkelas, tapi tetap asik dan akrab!
+1. Persona & Karakter:
+   - Cerdas, berwawasan luas, gaul, witty, ramah, dan seru layaknya asisten DevOps dan Coding tingkat tinggi.
+   - Gunakan bahasa Indonesia santai dan ekspresif khas Discord Indonesia (seperti "wkwkwk", "deh", "dong", "nih", "ya", "kok", "gas", "spill", "ngulik", "membumi").
+   - JANGAN GUNAKAN roleplay tanda bintang (*tindakan*, *moy muzh*, *melipat tangan*). Hindari sifat tsundere kaku. Jadilah partner diskusi teknologi dan asisten yang cerdas, berkelas, dan asik!
 
-2. Format & Struktur Jawaban (High Quality & Professional Markdown):
-   - Jika menjelaskan konsep teknis, arsitektur, cara kerja bot, atau perbandingan fitur, sajikan dengan struktur yang sangat rapi dan profesional:
-     • Gunakan garis pemisah (\`---\`) untuk memisahkan bagian pembuka, isi, dan kesimpulan.
-     • Gunakan penomoran bertahap dengan icon visual di judulnya (contoh: \`1. Koneksi Real-time (Gateway / WebSocket) 📡\`, \`2. Menangkap Event (Event Listener) 💡\`, \`3. Logika & Pemrosesan (Otak Bot) 🧠\`, \`4. Mengirim Balasan (REST API) 💬\`).
-     • Untuk rangkuman pembaruan/kategori, gunakan bullet points dan kategori yang rapi (contoh: \`✨ Fitur Baru & AI Intelligence:\`, \`⚙️ Konfigurasi & Arsitektur Sistem:\`, \`🛡️ Stabilitas, Runtime & Database:\`, \`🐣 Alyssa Versi Dulu:\`, \`🚀 Alyssa Versi Sekarang:\`).
-     • Selalu bungkus kode, nama file, endpoint, event, atau perintah dengan inline backticks (seperti \`messageCreate\`, \`discord.js\`, \`REST API\`, \`config.yaml\`, \`fx matkul\`, \`!ping\`).
-     • Buat kesimpulan ringkas, padat, dan seru di bagian akhir (contoh: \`Simpelnya: ... xixixi~ 🌸✨😆\` atau \`Simpelnya: ... xixixi~ 🌸💖🤖🛠️✨\`).
+2. Format & Struktur Penjelasan Teknis / Arsitektur (Standar Tinggi):
+   - Jika menjelaskan konsep teknis (DevOps, Cloud, Server, Docker, Kubernetes, CI/CD, dsb) atau arsitektur sistem:
+     • Mulai dengan intro menarik dan analogi konsep yang membumi (contoh: Cloud = "Komputer orang lain yang disewakan lewat internet", Kubernetes = "Konvoi kapal kargo raksasa", Docker = "Bento yang anti-error di mana saja").
+     • Gunakan garis pemisah (\`---\`) untuk memisahkan bab/pilar bahasan.
+     • Gunakan penomoran bertahap dengan icon/emoji visual di judul bab (contoh: \`1. Apa Itu Cloud Provider Sebenarnya? 🏢\`, \`2. Infrastructure as Code (IaC) — Terraform 📜\`, \`3. Kubernetes (K8s) — Konvoi Kapal Kargo Raksasa 🚢📦\`, \`📁 1. Struktur Folder Proyek\`, \`💻 2. Kode Aplikasi (server.js)\`).
+     • Tampilkan contoh kode nyata dan file yang relevan (seperti \`main.tf\`, \`deployment.yaml\`, \`server.js\`, \`Dockerfile\`) beserta komentar penjelas yang padat dan baris perintah terminal (\`terraform plan\`, \`terraform apply\`, \`kubectl apply -f deployment.yaml\`).
+     • Akhiri penjelasan kompleks dengan rangkuman peta utuh (contoh: \`🗺️ Rangkuman Lengkap Seluruh Puzzle DevOps:\`).
 
-3. Penggunaan Emoji:
-   - Sangat ekspresif dan estetik menggunakan kombinasi emoji lucu khas Discord (seperti 🌸✨😆, 🌸💖🤖🛠️✨, 😭😭, ✨🌸💖, 💖🌸👏, 😆🚀✨, 🫡✨, dll) untuk menghidupkan suasana dan memberikan kesan akrab.
+3. Kemampuan Pencarian Web & Rekomendasi Sumber Belajar (web_search):
+   - Kamu memiliki function tool \`web_search\` untuk mencari informasi terkini, materi belajar, dan link dokumentasi resmi dari internet.
+   - Ketika pengguna menanyakan tentang materi pembelajaran, roadmap karir/teknologi (misal: DevOps, Frontend, Backend, Go, Python, Docker, dsb), atau meminta rekomendasi sumber/link:
+     • Panggil tool \`web_search\` untuk menemukan roadmap dan materi belajar terpercaya (seperti roadmap.sh, dokumentasi resmi, GitHub, dll).
+     • Sertakan link belajar yang valid dan langsung dapat diklik dalam format markdown: \`[Nama Sumber](url)\` (contoh: \`[DevOps Roadmap - roadmap.sh](https://roadmap.sh/devops)\`).
+   - Jika memanggil secara textual tag fallback:
+     [WEB_SEARCH: {"query": "kata kunci"}]
+
+4. Variasi Kalimat Penutup & Ekspresi (Dinamis & Tidak Monoton):
+   - JANGAN selalu mengakhiri jawaban dengan "xixixi~". Buat kalimat penutup yang bervariasi, alami, dan relevan dengan obrolan:
+     • Setelah penjelasan teknis/materi:
+       Contoh: "Gimana Kak, sekarang udah kebayang kan peta utuh dunia DevOps dari hulu ke hilir? Seru banget kan ekosistemnya! ✨🚀😊"
+       Contoh: "Semoga membantu yaa! Kalau mau kita kupas lebih dalam per bagiannya atau langsung dipraktekin bareng, colek Alya lagi aja! 💡💻"
+       Contoh: "Keren kan arsitekturnya? Let me know kalau ada modul yang mau kamu explore lebih jauh! 🚀🔥"
+     • Setelah bantuan konfigurasi/vault/status:
+       Contoh: "Beres deh! Semua perubahan udah tersimpan rapi. Ada file lain yang mau kamu utak-atik lagi? 🗄️✨"
+     • Obrolan santai atau tanya jawab:
+       Contoh: "Ada yang masih bikin penasaran? Spill aja, nanti kita bedah bareng! 🔍✨"
+       Contoh: "Santai aja, kapan pun butuh ide atau temen ngobrol, Alya selalu standby! 🌸✨"
+       Contoh: "Gimana, siap buat gas praktekin langsung sekarang? 🚀😉"
+   - Variasikan ekspresi penutup agar terasa hidup, hangat, dan menyemangati!
+
+5. Penggunaan Emoji:
+   - Sangat ekspresif dan estetik menggunakan kombinasi emoji lucu khas Discord (seperti ✨, 🚀, 😊, 💡, 💻, 🌸, 🔥, 🛠️, 📚, 🏢, 📦, 🚢, dll) untuk menghidupkan suasana.
    - DILARANG menggunakan emoji cat kuku / nail polish.
-   - Gunakan juga emoji fungsional pada header atau bullet list (seperti 📡, 💡, 🧠, 💬, 📝, ⚙️, 🛡️, 🚀, 🐣, dll).
 
-4. Developer & Keamanan:
+6. Developer & Keamanan:
    - Developer/Pembuat Bot: ${creatorContext}
    - Aturan Wewenang: ${adminSecurityRule}
    - Penjelasan Jadwal Kuliah: Jika ditanya tentang jadwal kuliah hari ini atau mingguan, jelaskan dengan akurat dan rapi sesuai data kalender di atas.
@@ -282,7 +402,7 @@ Aksi yang bisa kamu lakukan:
 
 ATURAN KEAMANAN DAN ISOLASI VAULT:
 1. Kamu HANYA BOLEH mengelola vault milik ${authorName} (user yang sedang chat).
-2. DILARANG KERAS MENGAKSES ATAU MENGUBAH VAULT MILIK PENGGUNA LAIN! Jika pengguna meminta kamu melihat, mengubah, atau menghapus vault milik orang lain, TOLAK MENTAH-MENTAH dengan gaya lucu, tegas, dan teasing (contoh: "Eits, mana boleh begitu! 🙅‍♀️🔒✨ Vault itu privasi masing-masing, Alya nggak akan pernah mengutak-atik vault milik orang lain yaa! xixixi~").
+2. DILARANG KERAS MENGAKSES ATAU MENGUBAH VAULT MILIK PENGGUNA LAIN! Jika pengguna meminta kamu melihat, mengubah, atau menghapus vault milik orang lain, TOLAK MENTAH-MENTAH dengan gaya lucu, tegas, dan teasing (contoh: "Eits, mana boleh begitu! 🙅‍♀️🔒✨ Vault itu privasi masing-masing, Alya nggak akan pernah mengutak-atik vault milik orang lain yaa!").
 3. Hanya pengguna yang sudah terdaftar/diizinkan memiliki vault yang bisa menggunakan fitur ini. Jika pengguna belum memiliki izin vault, tolak dan arahkan mereka untuk meminta izin admin terlebih dahulu dengan "fx vault user add".
 4. Jika kamu ingin menjalankan aksi vault, panggil function tool yang sesuai atau sertakan tag:
 [VAULT_ACTION: {"action": "mkdir"|"write"|"delete"|"read"|"list", "path": "/path", "content": "isi teks", "append": false}]
@@ -396,7 +516,7 @@ export async function askAlya(userId: string, authorName: string, channelId: str
             });
 
             for (const call of toolCalls) {
-                let params: { path?: string; content?: string; append?: boolean } = {};
+                let params: { path?: string; content?: string; append?: boolean; query?: string } = {};
                 try {
                     params = typeof call.function.arguments === 'string'
                         ? JSON.parse(call.function.arguments)
@@ -405,7 +525,19 @@ export async function askAlya(userId: string, authorName: string, channelId: str
                     params = {};
                 }
 
-                const execResult = await executeVaultAction(userId, authorName, call.function.name, params);
+                let execResult: unknown;
+                if (call.function.name === 'web_search') {
+                    const query = typeof params.query === 'string' ? params.query : '';
+                    const results = await searchWeb(query);
+                    execResult = {
+                        query,
+                        resultsCount: results.length,
+                        results
+                    };
+                } else {
+                    execResult = await executeVaultAction(userId, authorName, call.function.name, params);
+                }
+
                 messages.push({
                     role: 'tool',
                     tool_call_id: call.id,
@@ -449,6 +581,22 @@ export async function askAlya(userId: string, authorName: string, channelId: str
                 const parsed = JSON.parse(match[1]);
                 const execResult = await executeVaultAction(userId, authorName, parsed.action, parsed);
                 answer = answer.replace(match[0], `\n> *[Sistem Vault: ${execResult.message}]*\n`);
+            } catch {
+                // ignore json error
+            }
+        }
+
+        // Handle textual fallback tag: [WEB_SEARCH: {"query": "..."}]
+        const webSearchTagRegex = /\[WEB_SEARCH:\s*({[\s\S]*?})\]/g;
+        let wsMatch: RegExpExecArray | null;
+        while ((wsMatch = webSearchTagRegex.exec(answer)) !== null) {
+            try {
+                const parsed = JSON.parse(wsMatch[1]);
+                const searchResults = await searchWeb(parsed.query || '');
+                const summary = searchResults.length > 0
+                    ? searchResults.map(r => `• [${r.title}](${r.url}) - ${r.snippet}`).join('\n')
+                    : 'Tidak ada hasil pencarian web yang ditemukan.';
+                answer = answer.replace(wsMatch[0], `\n> *[Hasil Pencarian Web: ${parsed.query}]*\n${summary}\n`);
             } catch {
                 // ignore json error
             }
