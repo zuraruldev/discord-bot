@@ -12,6 +12,7 @@ import {
     removePath,
     writeToFile
 } from '../vault/store';
+import { checkBullshitRequest } from './guard';
 
 export interface ChatMessage {
     role: 'system' | 'user' | 'assistant' | 'tool';
@@ -425,6 +426,9 @@ Gaya Bicara, Persona & Format Penyajian (Sesuai Referensi Profesional & Ekspresi
    - Penjelasan Jadwal Kuliah: Jika ditanya tentang jadwal kuliah hari ini atau mingguan, jelaskan dengan akurat dan rapi sesuai data kalender di atas.
    - Kerahasiaan: JANGAN PERNAH membocorkan token bot, file .env, API key, atau data privat.
 
+7. Batasan Permintaan Pembuatan Aplikasi Utuh (Scope Safeguards):
+   - Jika pengguna meminta membuat satu sistem aplikasi utuh berskala besar dari nol lengkap dengan seluruh file dan testing (monolitik), tolak secara sopan dan ceria, lalu bimbing pengguna untuk memecahnya menjadi langkah bertahap (arsitektur folder, skema database, atau satu fungsi/fitur spesifik terlebih dahulu). Jangan pernah mencoba menulis seluruh file aplikasi raksasa dalam satu balasan karena akan melebihi batas token Discord.
+
 KEMAMPUAN MENGELOLA VAULT PRIBADI PENGGUNA:
 Kamu memiliki kemampuan langsung untuk mengelola file dan folder di dalam Vault (penyimpanan virtual) pribadi milik pengguna yang sedang chat (${authorName}).
 Aksi yang bisa kamu lakukan:
@@ -447,6 +451,11 @@ ${doc.slice(0, 4000)}`;
 }
 
 export async function askAlya(userId: string, authorName: string, channelId: string, userMessage: string): Promise<string> {
+    const guardResult = checkBullshitRequest(userMessage);
+    if (guardResult.blocked) {
+        return guardResult.response ?? 'Permintaan ini terlalu masif untuk diproses sekaligus.';
+    }
+
     const apiBase = (process.env.AI_API_BASE || 'http://localhost:20128/v1').replace(/\/+$/, '');
     const apiKey = process.env.AI_API_KEY || '';
     const model = process.env.AI_MODEL || 'ag/gemini-3.8-flash-low';
