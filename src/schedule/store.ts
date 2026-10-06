@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from 'fs/promises';
 
-import { DEFAULT_REMINDER_USER_ID } from '../constants';
+import { isAdmin } from '../constants';
 import { DayTimeInfo, FormattedScheduleItem, ScheduleDatabase, ScheduleItem } from './types';
 
 const DB_DIR = './data';
@@ -8,7 +8,6 @@ const DB_FILE = './data/schedule.json';
 
 const DEFAULT_DB: ScheduleDatabase = {
     channelId: process.env.MATKUL_CHANNEL_ID || process.env.REMINDER_CHANNEL_ID || '',
-    pingUserId: DEFAULT_REMINDER_USER_ID,
     timezone: 'Asia/Jakarta',
     header: 'Teknik Informatika 1A🔥💻',
     schedule: {
@@ -113,6 +112,13 @@ export async function loadScheduleDb(): Promise<ScheduleDatabase> {
         if (!parsed.header) {
             parsed.header = 'Teknik Informatika 1A🔥💻';
             modified = true;
+        }
+        if (parsed.pingUserId) {
+            const cleanPing = parsed.pingUserId.replace(/[<@!>]/g, '').trim();
+            if (isAdmin(cleanPing) || cleanPing === '1256220010859466795') {
+                delete parsed.pingUserId;
+                modified = true;
+            }
         }
         if (envChannel && parsed.channelId !== envChannel) {
             parsed.channelId = envChannel;

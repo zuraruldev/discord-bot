@@ -1,5 +1,5 @@
 import { client } from '../Client';
-import { DEFAULT_REMINDER_USER_ID, PREFIX } from '../constants';
+import { isAdmin, PREFIX } from '../constants';
 import {
     buildReminderMessage,
     getDayTimeInfo,
@@ -16,6 +16,8 @@ function formatPing(pingId?: string): string {
     if (!pingId) return '';
     const cleaned = pingId.trim();
     if (!cleaned) return '';
+    const rawId = cleaned.replace(/[<@!>]/g, '').trim();
+    if (isAdmin(rawId) || rawId === '1256220010859466795') return '';
     if (cleaned === 'everyone' || cleaned === '@everyone') return '@everyone';
     if (cleaned === 'here' || cleaned === '@here') return '@here';
     if (cleaned.startsWith('<@') && cleaned.endsWith('>')) return cleaned;
@@ -48,14 +50,16 @@ export async function sendDailyReminder(options: ReminderOptions = {}): Promise<
 
     const targetDay = options.day ? (normalizeDayName(options.day) || timeInfo.dayKey) : timeInfo.dayKey;
     const targetChannelId = options.channelId || process.env.MATKUL_CHANNEL_ID || process.env.REMINDER_CHANNEL_ID || db.channelId;
-    const pingUserId = process.env.REMINDER_USER_ID || db.pingUserId || DEFAULT_REMINDER_USER_ID;
+    const rawPing = (process.env.REMINDER_USER_ID || db.pingUserId || '').trim();
+    const cleanPing = rawPing.replace(/[<@!>]/g, '').trim();
+    const pingUserId = rawPing && !isAdmin(cleanPing) && cleanPing !== '1256220010859466795' ? rawPing : undefined;
 
     console.log('[Reminder Debug] === Reminder Triggered ===');
     console.log('[Reminder Debug] Forced:', Boolean(options.forced));
     console.log('[Reminder Debug] Current Date/Time:', timeInfo.calendarStr);
     console.log('[Reminder Debug] Target Day:', targetDay);
     console.log('[Reminder Debug] Target Channel ID:', targetChannelId || '(none)');
-    console.log('[Reminder Debug] Ping User ID:', pingUserId);
+    console.log('[Reminder Debug] Ping User ID:', pingUserId || '(none)');
 
     if (!targetChannelId) {
         const errorMsg = `No channel ID configured. Please set MATKUL_CHANNEL_ID / REMINDER_CHANNEL_ID or use \`${PREFIX} matkul setchannel\``;
@@ -123,11 +127,11 @@ export async function sendDailyReminder(options: ReminderOptions = {}): Promise<
         };
 
         const sentMsg = await send(targetChannelId, messagePayload);
-        console.log('[Reminder Debug] Reminder message successfully sent! Message ID:', sentMsg.id);
+        console.log('[Reminder Debug] Reminder message successfully sent! Message ID:', sentMsg?.id);
 
         return {
             success: true,
-            messageId: sentMsg.id,
+            messageId: sentMsg?.id,
             channelId: targetChannelId,
             dayKey: targetDay,
             calendarStr: timeInfo.calendarStr,

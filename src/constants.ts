@@ -1,6 +1,5 @@
 export const PREFIX = (process.env.PREFIX || 'fx').toLowerCase();
 export const IDLEFARM_ID = '1085406806492319784';
-export const DEFAULT_REMINDER_USER_ID = '1256220010859466795';
 
 export const ADMIN_USER_IDS: string[] = [
     '1256220010859466795',
