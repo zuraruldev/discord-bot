@@ -8,6 +8,7 @@ const DB_FILE = './data/schedule.json';
 
 const DEFAULT_DB: ScheduleDatabase = {
     channelId: process.env.MATKUL_CHANNEL_ID || process.env.REMINDER_CHANNEL_ID || '',
+    roleId: process.env.MATKUL_ROLE_ID || process.env.REMINDER_ROLE_ID || '1559365098659647500',
     timezone: 'Asia/Jakarta',
     header: 'Teknik Informatika 1A🔥💻',
     schedule: {
@@ -119,6 +120,14 @@ export async function loadScheduleDb(): Promise<ScheduleDatabase> {
                 delete parsed.pingUserId;
                 modified = true;
             }
+        }
+        const envRole = process.env.MATKUL_ROLE_ID || process.env.REMINDER_ROLE_ID;
+        if (envRole && parsed.roleId !== envRole) {
+            parsed.roleId = envRole;
+            modified = true;
+        } else if (!parsed.roleId) {
+            parsed.roleId = '1559365098659647500';
+            modified = true;
         }
         if (envChannel && parsed.channelId !== envChannel) {
             parsed.channelId = envChannel;
@@ -407,6 +416,12 @@ export function getScheduleForDay(db: ScheduleDatabase, dayKey: string): Formatt
 export async function setReminderChannel(channelId: string): Promise<void> {
     const db = await loadScheduleDb();
     db.channelId = channelId;
+    await saveScheduleDb(db);
+}
+
+export async function setReminderRole(roleId: string): Promise<void> {
+    const db = await loadScheduleDb();
+    db.roleId = roleId;
     await saveScheduleDb(db);
 }
 

@@ -11,6 +11,7 @@ import {
     normalizeDayName,
     removeScheduleItem,
     setReminderChannel,
+    setReminderRole,
     WEEKDAYS
 } from '../schedule/store';
 import { reply } from '../utils';
@@ -19,7 +20,7 @@ defineCommand({
     name: 'reminder',
     description: 'Force run class reminder or manage schedule',
     aliases: ['remind'],
-    usages: ['', '[day]', 'setchannel', 'list', 'add <day> <time> <ruang> <matkul...>', 'remove <day> <index>', 'clear <day>'],
+    usages: ['', '[day]', 'setchannel', 'setrole [roleId]', 'list', 'add <day> <time> <ruang> <matkul...>', 'remove <day> <index>', 'clear <day>'],
     adminOnly: true,
     hidden: true,
     async run(message, args) {
@@ -38,6 +39,19 @@ defineCommand({
                 embeds: [{
                     title: 'Channel Reminder Diperbarui',
                     description: `Channel reminder berhasil diatur ke <#${channelId}> (\`${channelId}\`).\nSetiap jam 5:00 AM (Senin - Jumat) pesan jadwal akan dikirim ke channel ini.`,
+                    color: 0x57F287
+                }]
+            });
+        }
+
+        if (subCommand === 'setrole' || subCommand === 'role') {
+            const roleId = args[1]?.replace(/[<@&>]/g, '') || '1559365098659647500';
+            await setReminderRole(roleId);
+            console.log(`[Reminder Debug] Reminder role set to ${roleId} by ${message.author.tag} (${message.author.id})`);
+            return reply(message, {
+                embeds: [{
+                    title: 'Role Reminder Diperbarui',
+                    description: `Role reminder berhasil diatur ke <@&${roleId}> (\`${roleId}\`).\nPesan jadwal akan melakukan mention role ini di bagian akhir pesan.`,
                     color: 0x57F287
                 }]
             });
@@ -147,7 +161,7 @@ defineCommand({
             return reply(message, {
                 embeds: [{
                     title: 'Jadwal Pembelajaran Mingguan (Senin - Jumat)',
-                    description: `> Channel: ${db.channelId ? `<#${db.channelId}>` : `*Belum diatur (gunakan \`${PREFIX} reminder setchannel\`)*`} | Timezone: \`${timeZone}\``,
+                    description: `> Channel: ${db.channelId ? `<#${db.channelId}>` : `*Belum diatur (gunakan \`${PREFIX} reminder setchannel\`)*`} | Role: ${db.roleId ? `<@&${db.roleId}>` : '<@&1559365098659647500>'} | Timezone: \`${timeZone}\``,
                     fields,
                     color: 0x5865F2,
                     footer: { text: `Gunakan "${PREFIX} reminder [hari]" untuk force test` }

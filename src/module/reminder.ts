@@ -24,10 +24,23 @@ function formatPing(pingId?: string): string {
     return `<@${cleaned}>`;
 }
 
+function formatRolePing(roleId?: string): string {
+    if (!roleId) return '';
+    const cleaned = roleId.trim();
+    if (!cleaned) return '';
+    if (cleaned === 'everyone' || cleaned === '@everyone') return '@everyone';
+    if (cleaned === 'here' || cleaned === '@here') return '@here';
+    if (cleaned.startsWith('<@&') && cleaned.endsWith('>')) return cleaned;
+    const rawId = cleaned.replace(/[<@&!>]/g, '').trim();
+    if (!rawId) return '';
+    return `<@&${rawId}>`;
+}
+
 export interface ReminderOptions {
     channelId?: string;
     day?: string;
     forced?: boolean;
+    roleId?: string;
 }
 
 export interface ReminderResult {
@@ -50,6 +63,14 @@ export async function sendDailyReminder(options: ReminderOptions = {}): Promise<
 
     const targetDay = options.day ? (normalizeDayName(options.day) || timeInfo.dayKey) : timeInfo.dayKey;
     const targetChannelId = options.channelId || process.env.MATKUL_CHANNEL_ID || process.env.REMINDER_CHANNEL_ID || db.channelId;
+    const targetRoleId = (
+        options.roleId ||
+        process.env.MATKUL_ROLE_ID ||
+        process.env.REMINDER_ROLE_ID ||
+        db.roleId ||
+        db.pingRoleId ||
+        '1559365098659647500'
+    ).trim();
     const rawPing = (process.env.REMINDER_USER_ID || db.pingUserId || '').trim();
     const cleanPing = rawPing.replace(/[<@!>]/g, '').trim();
     const pingUserId = rawPing && !isAdmin(cleanPing) && cleanPing !== '1256220010859466795' ? rawPing : undefined;
@@ -59,6 +80,7 @@ export async function sendDailyReminder(options: ReminderOptions = {}): Promise<
     console.log('[Reminder Debug] Current Date/Time:', timeInfo.calendarStr);
     console.log('[Reminder Debug] Target Day:', targetDay);
     console.log('[Reminder Debug] Target Channel ID:', targetChannelId || '(none)');
+    console.log('[Reminder Debug] Role ID:', targetRoleId || '(none)');
     console.log('[Reminder Debug] Ping User ID:', pingUserId || '(none)');
 
     if (!targetChannelId) {
@@ -118,8 +140,10 @@ export async function sendDailyReminder(options: ReminderOptions = {}): Promise<
         items
     });
 
-    const pingStr = formatPing(pingUserId);
-    const messageContent = pingStr ? `${pingStr}\n\n${reminderText}` : reminderText;
+    const rolePingStr = formatRolePing(targetRoleId);
+    const userPingStr = formatPing(pingUserId);
+    const pingStr = [rolePingStr, userPingStr].filter(Boolean).join(' ');
+    const messageContent = pingStr ? `${reminderText}\n\n${pingStr}` : reminderText;
 
     try {
         const messagePayload = {

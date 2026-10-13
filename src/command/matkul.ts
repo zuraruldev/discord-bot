@@ -13,6 +13,7 @@ import {
     normalizeDayName,
     removeScheduleItem,
     setReminderChannel,
+    setReminderRole,
     WEEKDAYS
 } from '../schedule/store';
 import { reply } from '../utils';
@@ -29,7 +30,8 @@ defineCommand({
         'add <hari> <waktu> <ruang> <nama_matkul...>',
         'remove <hari> <index>',
         'clear <hari>',
-        'setchannel [channelId]'
+        'setchannel [channelId]',
+        'setrole [roleId]'
     ],
     async run(message, args) {
         const subCommand = args[0]?.toLowerCase();
@@ -49,6 +51,23 @@ defineCommand({
                 embeds: [{
                     title: 'Channel Matkul Diperbarui',
                     description: `Channel jadwal matkul diatur ke <#${channelId}> (\`${channelId}\`).\nSetiap jam 5:00 AM (Senin - Jumat) pesan jadwal otomatis dikirim ke channel ini.`,
+                    color: 0x57F287,
+                    timestamp: new Date().toISOString()
+                }]
+            });
+        }
+
+        if (subCommand === 'setrole' || subCommand === 'role') {
+            if (!isAdmin(message.author.id)) {
+                return reply(message, 'Command ini hanya dapat digunakan oleh admin.');
+            }
+
+            const roleId = args[1]?.replace(/[<@&>]/g, '') || '1559365098659647500';
+            await setReminderRole(roleId);
+            return reply(message, {
+                embeds: [{
+                    title: 'Role Reminder Matkul Diperbarui',
+                    description: `Role reminder diatur ke <@&${roleId}> (\`${roleId}\`).\nPesan jadwal otomatis akan melakukan mention role ini di bagian akhir pesan.`,
                     color: 0x57F287,
                     timestamp: new Date().toISOString()
                 }]
@@ -213,7 +232,7 @@ defineCommand({
             return reply(message, {
                 embeds: [{
                     title: 'Jadwal Perkuliahan Mingguan (Senin - Jumat)',
-                    description: `> Channel: ${targetChannelId ? `<#${targetChannelId}>` : '*Belum diatur*'} | Timezone: \`${timeZone}\``,
+                    description: `> Channel: ${targetChannelId ? `<#${targetChannelId}>` : '*Belum diatur*'} | Role: ${db.roleId ? `<@&${db.roleId}>` : '<@&1559365098659647500>'} | Timezone: \`${timeZone}\``,
                     fields,
                     color: 0x5865F2,
                     footer: { text: `Gunakan "${PREFIX} matkul [hari]" untuk melihat hari tertentu` },

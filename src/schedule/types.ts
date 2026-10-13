@@ -24,6 +24,8 @@ export interface FormattedScheduleItem {
 
 export interface ScheduleDatabase {
     channelId?: string;
+    roleId?: string;
+    pingRoleId?: string;
     pingUserId?: string;
     timezone?: string;
     lastSentDate?: string;
