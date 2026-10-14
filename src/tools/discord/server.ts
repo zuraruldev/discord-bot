@@ -6,7 +6,7 @@ import { BotTool } from '../types';
 
 export const serverInfoTool: BotTool = {
     name: 'server_info',
-    description: 'Melihat statistik server Discord (member, channel, roles, ping bot) dan performa hardware VPS (CPU, RAM, Disk, Uptime).',
+    description: 'Melihat statistik server Discord (member, channel, roles, ping bot). Khusus Admin juga menampilkan performa hardware VPS (CPU, RAM, Disk, Uptime).',
     parameters: {
         type: 'object',
         properties: {
@@ -24,19 +24,7 @@ export const serverInfoTool: BotTool = {
         const totalGuilds = client.guilds.size;
         const totalUsers = client.users.size;
 
-        const totalMem = os.totalmem();
-        const freeMem = os.freemem();
-        const usedMem = totalMem - freeMem;
-        const ramPercent = (usedMem / totalMem) * 100;
-        const uptimeSeconds = os.uptime();
-
-        const cpus = os.cpus();
-        const cpuModel = cpus[0]?.model || 'Unknown CPU';
-        const cpuCores = cpus.length;
-
-        const disk = await getDiskStats();
-
-        return {
+        const result: Record<string, unknown> = {
             success: true,
             discord: {
                 guildName: guild?.name || 'N/A',
@@ -47,8 +35,23 @@ export const serverInfoTool: BotTool = {
                 botPingMs: Math.round(ping),
                 cachedGuilds: totalGuilds,
                 cachedUsers: totalUsers
-            },
-            vps: {
+            }
+        };
+
+        if (context.isAdmin) {
+            const totalMem = os.totalmem();
+            const freeMem = os.freemem();
+            const usedMem = totalMem - freeMem;
+            const ramPercent = (usedMem / totalMem) * 100;
+            const uptimeSeconds = os.uptime();
+
+            const cpus = os.cpus();
+            const cpuModel = cpus[0]?.model || 'Unknown CPU';
+            const cpuCores = cpus.length;
+
+            const disk = await getDiskStats();
+
+            result.vps = {
                 platform: `${os.type()} ${os.release()} (${os.arch()})`,
                 uptimeDays: (uptimeSeconds / 86400).toFixed(2),
                 cpu: {
@@ -66,7 +69,14 @@ export const serverInfoTool: BotTool = {
                     totalGb: disk.totalGb.toFixed(2),
                     percent: disk.percent.toFixed(1)
                 }
-            }
-        };
+            };
+        } else {
+            result.vps = {
+                status: 'Restricted (Admin Only)',
+                message: 'Informasi spesifikasi hosting dan hardware VPS disembunyikan untuk menjaga keamanan server.'
+            };
+        }
+
+        return result;
     }
 };

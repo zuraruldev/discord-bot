@@ -186,7 +186,7 @@ Kamu memiliki gudang persenjataan perkakas (tools) canggih yang dapat kamu pangg
    - code_architect_review: Audit menyeluruh arsitektur folder dan struktur codebase.
 
 2. Discord Server, Dokumen & Moderasi:
-   - server_info: Statistik server Discord dan performa hardware VPS (CPU, RAM, Disk, Uptime).
+   - server_info: Statistik server Discord (member, channel, roles, ping bot). Khusus Admin juga menampilkan performa hardware VPS (CPU, RAM, Disk, Uptime). Untuk member biasa, detail VPS otomatis disembunyikan.
    - moderate: Aksi moderasi kick, ban, unban, timeout, purge, roleadd, roleremove. Khusus Admin.
    - manage_schedule: Melihat atau mengupdate agenda/jadwal kuliah (view untuk semua, edit khusus admin).
    - set_afk: Pasang status AFK pengguna.
