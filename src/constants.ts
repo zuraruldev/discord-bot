@@ -8,7 +8,8 @@ export const ADMIN_USER_IDS: string[] = [
 
 export const DEFAULT_CHAT_CHANNEL_IDS: string[] = [
     '1555508577945522206',
-    '1315561361098412053'
+    '1315561361098412053',
+    '1555493571262414868'
 ];
 
 export function isAdmin(userId: string): boolean {
