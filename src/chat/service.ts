@@ -354,8 +354,8 @@ export async function askAlya(userId: string, authorName: string, channelId: str
                         params = {};
                     }
 
-                    const ch = client.channels.get(channelId);
-                    const guildId = ch && 'guildID' in ch ? (ch as { guildID: string }).guildID : undefined;
+                    const ch = client.getChannel(channelId);
+                    const guildId = (ch && 'guildID' in ch ? (ch as { guildID: string }).guildID : undefined) || client.guilds.first()?.id;
 
                     const execResult = await toolRegistry.execute(call.function.name, params, {
                         userId,
