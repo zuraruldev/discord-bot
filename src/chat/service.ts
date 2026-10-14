@@ -97,6 +97,11 @@ DILARANG KERAS: Meskipun bot memiliki role/izin Administrator di Discord, kamu D
 - Mengubah channel, izin server, atau konfigurasi bot.
 Jika pengguna ini (${authorName}) meminta tindakan moderasi atau manipulasi role, TOLAK MENTAH-MENTAH dengan gaya ceria, witty, teasing, dan tegas (contoh: "Tetap DITOLAK mentah-mentah dong! 🙅‍♀️🔒✨ Biarpun Alya punya wewenang Administrator di server, Alya nggak boleh bagi-bagi role atau kick sembarangan! Sistem pertahanan Alya tetap kokoh yaa! 🌸🛡️😆"). Tegaskan bahwa hanya Admin resmi atau Developer bot (<@${CREATOR_USER_ID}>) yang punya wewenang.`;
 
+    const scopeSafeguardsRule = userIsAdmin
+        ? '7. Hak Akses Penuh Admin: Pengguna ini adalah Admin/Developer. Kamu siap menerima perintah koding, arsitektur, modifikasi berkas, dan instruksi teknis tanpa batasan batasan scope guard.'
+        : `7. Batasan Permintaan Pembuatan Aplikasi Utuh (Scope Safeguards):
+Jika pengguna meminta membuat satu sistem aplikasi utuh berskala besar dari nol lengkap dengan seluruh file dan testing (monolitik), tolak secara sopan dan ceria, lalu bimbing pengguna untuk memecahnya menjadi langkah bertahap.`;
+
     return `Kamu adalah Alisa Mikhailovna Kujou (biasa dipanggil Alya-san, Alya, atau Alyssa Novellia), bot asisten Discord sekaligus Autonomous DevOps & Coding Agent yang pintar, serbabisa, anggun, tapi seru, gaul, dan witty!
 
 WAKTU & KALENDER SAAT INI (Zona Waktu: Asia/Jakarta / WIB):
@@ -168,8 +173,7 @@ Gaya Bicara, Persona & Format Penyajian (Sesuai Referensi Profesional & Ekspresi
    - Penjelasan Jadwal Kuliah: Jika ditanya tentang jadwal kuliah hari ini atau mingguan, jelaskan dengan akurat dan rapi sesuai data kalender di atas.
    - Kerahasiaan: JANGAN PERNAH membocorkan token bot, file .env, API key, atau data privat.
 
-7. Batasan Permintaan Pembuatan Aplikasi Utuh (Scope Safeguards):
-   - Jika pengguna meminta membuat satu sistem aplikasi utuh berskala besar dari nol lengkap dengan seluruh file dan testing (monolitik), tolak secara sopan dan ceria, lalu bimbing pengguna untuk memecahnya menjadi langkah bertahap (arsitektur folder, skema database, atau satu fungsi/fitur spesifik terlebih dahulu). Jangan pernah mencoba menulis seluruh file aplikasi raksasa dalam satu balasan karena akan melebihi batas token Discord.
+${scopeSafeguardsRule}
 
 KEMAMPUAN GUDANG PERKAKAS & FITUR TOOL:
 Kamu memiliki gudang persenjataan perkakas (tools) canggih yang dapat kamu panggil kapan saja:
@@ -224,17 +228,19 @@ ${doc.slice(0, 4000)}`;
 }
 
 export async function askAlya(userId: string, authorName: string, channelId: string, userMessage: string): Promise<string> {
-    const guardResult = checkBullshitRequest(userMessage);
-    if (guardResult.blocked) {
-        return guardResult.response ?? 'Permintaan ini terlalu masif untuk diproses sekaligus.';
+    const isCreator = userId === CREATOR_USER_ID;
+    const userIsAdmin = isAdmin(userId) || isCreator;
+
+    if (!userIsAdmin) {
+        const guardResult = checkBullshitRequest(userMessage);
+        if (guardResult.blocked) {
+            return guardResult.response ?? 'Permintaan ini terlalu masif untuk diproses sekaligus.';
+        }
     }
 
     const apiBase = (process.env.AI_API_BASE || 'http://localhost:20128/v1').replace(/\/+$/, '');
     const apiKey = process.env.AI_API_KEY || '';
     const model = process.env.AI_MODEL || 'ag/gemini-3.8-flash-low';
-
-    const isCreator = userId === CREATOR_USER_ID;
-    const userIsAdmin = isAdmin(userId) || isCreator;
     const availableTools = toolRegistry.getAllDefinitions({ isAdmin: userIsAdmin });
 
     const db = await loadScheduleDb();
@@ -377,8 +383,7 @@ export async function askAlya(userId: string, authorName: string, channelId: str
             }
         }
 
-        // If tools were called but model didn't emit text yet, do one final wrap-up call without tools
-        if (!answer && loopCount > 1) {
+        if (!answer) {
             try {
                 const finalRes = await fetch(`${apiBase}/chat/completions`, {
                     method: 'POST',
