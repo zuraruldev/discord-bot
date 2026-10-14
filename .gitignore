@@ -13,3 +13,5 @@ data/schedule.json
 data/monitoring.json
 data/vault.json
 data/user-stats.json
+data/user_memories.json
+data/afk.json

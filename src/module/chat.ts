@@ -3,6 +3,7 @@ import { Message } from 'oceanic.js';
 import { askAlya } from '../chat/service';
 import { client } from '../Client';
 import { PREFIX } from '../constants';
+import { clearAfkUser, getAfkUser } from '../tools/discord/communication';
 import { reply } from '../utils';
 
 const ALLOWED_CHAT_CHANNEL_ID = process.env.CHAT_CHANNEL_ID || '1555508577945522206';
@@ -13,6 +14,26 @@ client.on('messageCreate', async (message: Message) => {
     if (!client.ready) return;
 
     if (!message.channel || message.channel.id !== ALLOWED_CHAT_CHANNEL_ID) return;
+
+    if (clearAfkUser(message.author.id)) {
+        await reply(message, `Welcome back, <@${message.author.id}>! Status AFK-mu telah dimatikan yaa~ 🌸✨`).catch(err => {
+            void err;
+        });
+    }
+
+    const mentions = message.content.match(/<@!?(\d+)>/g);
+    if (mentions) {
+        for (const m of mentions) {
+            const targetId = m.replace(/[<@!>]/g, '');
+            if (targetId === message.author.id) continue;
+            const afkData = getAfkUser(targetId);
+            if (afkData) {
+                await reply(message, `ℹ️ <@${targetId}> sedang AFK: "${afkData.reason}"`).catch(err => {
+                    void err;
+                });
+            }
+        }
+    }
 
     const trimmed = message.content.trim().toLowerCase();
     if (trimmed.startsWith(PREFIX)) return;
