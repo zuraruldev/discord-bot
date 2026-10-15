@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs';
 
+import { inspectImage } from '../../chat/vision';
 import {
     addScheduleItem,
     clearScheduleDay,
@@ -15,7 +16,7 @@ import { BotTool } from '../types';
 
 export const readFileTool: BotTool = {
     name: 'read_file',
-    description: 'Membaca isi dokumen attachment atau file teks (TXT, JSON, CSV, Markdown, dsb) baik dari path lokal maupun link URL Discord.',
+    description: 'Membaca isi dokumen attachment atau file teks (TXT, JSON, CSV, Markdown, dsb) baik dari path lokal maupun link URL Discord. Otomatis mengenali dan menganalisis visual jika berupa gambar.',
     parameters: {
         type: 'object',
         properties: {
@@ -39,11 +40,39 @@ export const readFileTool: BotTool = {
         }
 
         try {
+            const isPotentialImage = /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(input.split('?')[0])
+                || /^https?:\/\/(?:cdn|media)\.discordapp\.(?:com|net)\/attachments\//i.test(input);
+
             if (/^https?:\/\//i.test(input)) {
+                if (isPotentialImage) {
+                    const imgRes = await inspectImage(input);
+                    if (imgRes.success) {
+                        return {
+                            success: true,
+                            source: 'url',
+                            is_image: true,
+                            url: input,
+                            content: imgRes.analysis
+                        };
+                    }
+                }
+
                 const res = await fetch(input, { signal: AbortSignal.timeout(10000) });
                 if (!res.ok) {
                     return { success: false, message: `Gagal mengunduh file dari URL: Status ${res.status}` };
                 }
+                const contentType = (res.headers.get('content-type') || '').toLowerCase();
+                if (contentType.startsWith('image/')) {
+                    const imgRes = await inspectImage(input);
+                    return {
+                        success: true,
+                        source: 'url',
+                        is_image: true,
+                        url: input,
+                        content: imgRes.analysis || imgRes.message
+                    };
+                }
+
                 const text = await res.text();
                 return {
                     success: true,
@@ -52,6 +81,19 @@ export const readFileTool: BotTool = {
                     totalLength: text.length,
                     content: text.slice(0, maxChars)
                 };
+            }
+
+            if (isPotentialImage) {
+                const imgRes = await inspectImage(input);
+                if (imgRes.success) {
+                    return {
+                        success: true,
+                        source: 'local_file',
+                        is_image: true,
+                        path: input,
+                        content: imgRes.analysis
+                    };
+                }
             }
 
             const resolved = resolveSafePath(input);
@@ -70,6 +112,33 @@ export const readFileTool: BotTool = {
                 message: `Gagal membaca file: ${errorMsg}`
             };
         }
+    }
+};
+
+export const inspectImageTool: BotTool = {
+    name: 'inspect_image',
+    description: 'Membaca, mengekstrak teks (OCR), dan menganalisis gambar dari URL link Discord/web atau file lokal.',
+    parameters: {
+        type: 'object',
+        properties: {
+            image_url_or_path: {
+                type: 'string',
+                description: 'URL gambar (attachment Discord, web) atau path file lokal'
+            },
+            instruction: {
+                type: 'string',
+                description: 'Instruksi khusus untuk analisis gambar (misal: "baca seluruh teks", "jelaskan diagram arsitektur", dll)'
+            }
+        },
+        required: ['image_url_or_path']
+    },
+    execute: async (args) => {
+        const input = String(args.image_url_or_path || '').trim();
+        const instruction = args.instruction ? String(args.instruction) : undefined;
+        if (!input) {
+            return { success: false, message: 'Harap berikan path file atau URL gambar.' };
+        }
+        return await inspectImage(input, instruction);
     }
 };
 

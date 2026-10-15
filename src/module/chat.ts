@@ -1,6 +1,7 @@
 import { Message } from 'oceanic.js';
 
 import { askAlya } from '../chat/service';
+import { extractImagesFromMessage } from '../chat/vision';
 import { client } from '../Client';
 import { isAllowedChatChannel, PREFIX } from '../constants';
 import { clearAfkUser, getAfkUser } from '../tools/discord/communication';
@@ -44,9 +45,10 @@ client.on('messageCreate', async (message: Message) => {
 
     let isReplyToBot = false;
     let referencedContent = '';
+    let refMessage: Message | null = null;
 
     if (message.messageReference?.messageID) {
-        let refMessage = message.channel?.messages.get(message.messageReference.messageID);
+        refMessage = message.channel?.messages.get(message.messageReference.messageID) || null;
         if (!refMessage && message.channel) {
             try {
                 refMessage = await client.rest.channels.getMessage(message.channel.id, message.messageReference.messageID);
@@ -69,12 +71,18 @@ client.on('messageCreate', async (message: Message) => {
 
     if (!isMentioned && !isReplyToBot && !hasNameKeyword) return;
 
-    const cleanContent = message.content
+    const images = await extractImagesFromMessage(message, refMessage);
+
+    let cleanContent = message.content
         .replace(new RegExp(`<@!?${botId}>`, 'g'), '')
         .trim();
 
     if (!cleanContent) {
-        return reply(message, 'Halo! Ada apa manggil Alya nih? Mau ngobrol atau butuh bantuan? xixixi~ 🌸✨');
+        if (images.length > 0) {
+            cleanContent = 'Tolong perhatikan dan baca isi gambar ini, lalu jelaskan atau tanggapi isinya secara ramah, detail, dan ceria.';
+        } else {
+            return reply(message, 'Halo! Ada apa manggil Alya nih? Mau ngobrol atau butuh bantuan? xixixi~ 🌸✨');
+        }
     }
 
     try {
@@ -87,6 +95,6 @@ client.on('messageCreate', async (message: Message) => {
         ? `[Konteks: Membalas pesan sebelumnya: "${referencedContent}"]\n\nPesan Pengguna: ${cleanContent}`
         : cleanContent;
 
-    const answer = await askAlya(message.author.id, message.author.username, message.channel?.id || 'dm', userPrompt);
+    const answer = await askAlya(message.author.id, message.author.username, message.channel?.id || 'dm', userPrompt, images);
     return reply(message, answer);
 });

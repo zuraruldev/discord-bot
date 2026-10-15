@@ -7,12 +7,17 @@ import { isAdmin } from '../constants';
 import { getDayTimeInfo, getScheduleForDay, loadScheduleDb, WEEKDAYS } from '../schedule/store';
 import { executeVaultAction, searchWeb, toolRegistry } from '../tools';
 import { checkBullshitRequest } from './guard';
+import { VisionImage } from './vision';
 
 export { executeVaultAction, searchWeb };
 
+export type ChatContentPart =
+    | { type: 'text'; text: string }
+    | { type: 'image_url'; image_url: { url: string; detail?: 'auto' | 'low' | 'high' } };
+
 export interface ChatMessage {
     role: 'system' | 'user' | 'assistant' | 'tool';
-    content?: string;
+    content?: string | ChatContentPart[];
     tool_call_id?: string;
     tool_calls?: {
         id: string;
@@ -167,7 +172,13 @@ Gaya Bicara, Persona & Format Penyajian (Sesuai Referensi Profesional & Ekspresi
    - Sangat ekspresif dan estetik menggunakan kombinasi emoji lucu khas Discord (seperti ✨, 🚀, 😊, 💡, 💻, 🌸, 🔥, 🛠️, 📚, 🏢, 📦, 🚢, dll) untuk menghidupkan suasana.
    - DILARANG menggunakan emoji cat kuku / nail polish.
 
-6. Developer & Keamanan:
+6. Kemampuan Penglihatan & Membaca Gambar (Multimodal Vision):
+   - Kamu memiliki kemampuan visual multimodal tingkat tinggi! Kamu DAPAT MELIHAT dan MEMBACA gambar secara langsung dari attachment chat Discord, screenshot terminal/kodingan, foto dokumen, diagram arsitektur, meme, dsb.
+   - Pengguna bisa mengirim prompt teks bersamaan dengan gambar (misalnya: "can you read this" + [gambar], "kenapa kodingan ini error?" + [screenshot]). Bacalah teks (OCR), diagram, pesan error, atau detail visual dalam gambar tersebut dan jawab langsung pertanyaan pengguna secara cerdas, akurat, dan seru!
+   - Jika pengguna mengirim gambar tanpa prompt pengantar, otomatis analisis dan bacakan teks/detail isi visual gambar tersebut secara ramah dan informatif.
+   - DILARANG berhalusinasi mengatakan bahwa kamu tidak bisa membaca gambar atau lampiran tidak terkirim jika gambar sudah terlampir.
+
+7. Developer & Keamanan:
    - Developer/Pembuat Bot: ${creatorContext}
    - Aturan Wewenang: ${adminSecurityRule}
    - Penjelasan Jadwal Kuliah: Jika ditanya tentang jadwal kuliah hari ini atau mingguan, jelaskan dengan akurat dan rapi sesuai data kalender di atas.
@@ -197,7 +208,8 @@ Kamu memiliki gudang persenjataan perkakas (tools) canggih yang dapat kamu pangg
    - set_reminder: Pasang alarm pengingat waktu (menit/jam).
    - send_dm: Kirim DM privat ke pengguna Discord. Khusus Admin.
    - ask_owner: Jalur darurat kirim laporan / pertanyaan penting ke Creator bot via DM.
-   - read_file: Baca dokumen attachment atau file teks lokal/URL.
+   - read_file: Baca dokumen attachment atau file teks lokal/URL (otomatis mengenali dan menganalisis visual jika berupa gambar).
+   - inspect_image: Membaca, mengekstrak teks (OCR), dan menganalisis gambar dari link Discord/web atau file lokal.
    - fetch_youtube_transcript: Ambil transkrip subtitle video YouTube untuk dirangkum.
    - search_novel_catalog: Cari katalog Light Novel dan Manga di archives/database.
 
@@ -227,7 +239,93 @@ Pengetahuan Kode & Fitur Bot:
 ${doc.slice(0, 4000)}`;
 }
 
-export async function askAlya(userId: string, authorName: string, channelId: string, userMessage: string): Promise<string> {
+function parseAiResponse(rawText: string): { content: string; tool_calls?: ChatMessage['tool_calls'] } {
+    let content = '';
+    let tool_calls: ChatMessage['tool_calls'] = undefined;
+
+    try {
+        const data = JSON.parse(rawText) as {
+            choices?: {
+                message?: {
+                    content?: string;
+                    tool_calls?: ChatMessage['tool_calls'];
+                };
+            }[];
+        };
+        content = data.choices?.[0]?.message?.content?.trim() || '';
+        tool_calls = data.choices?.[0]?.message?.tool_calls;
+    } catch {
+        const lines = rawText.split('\n');
+        const toolCallsMap = new Map<number, { id: string; type: 'function'; function: { name: string; arguments: string } }>();
+
+        for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith('data: ') && trimmed !== 'data: [DONE]') {
+                try {
+                    const chunk = JSON.parse(trimmed.slice(6)) as {
+                        choices?: {
+                            delta?: {
+                                content?: string;
+                                tool_calls?: {
+                                    index?: number;
+                                    id?: string;
+                                    type?: 'function';
+                                    function?: { name?: string; arguments?: string };
+                                }[];
+                            };
+                            message?: {
+                                content?: string;
+                                tool_calls?: ChatMessage['tool_calls'];
+                            };
+                        }[];
+                    };
+                    const choice = chunk.choices?.[0];
+                    const chunkContent = choice?.delta?.content || choice?.message?.content;
+                    if (chunkContent) content += chunkContent;
+
+                    const deltaToolCalls = choice?.delta?.tool_calls || choice?.message?.tool_calls;
+                    if (Array.isArray(deltaToolCalls)) {
+                        for (let i = 0; i < deltaToolCalls.length; i++) {
+                            const dtc = deltaToolCalls[i];
+                            const idx = dtc.index ?? i;
+                            const existing = toolCallsMap.get(idx);
+                            if (!existing) {
+                                toolCallsMap.set(idx, {
+                                    id: dtc.id || `call_${idx}`,
+                                    type: 'function',
+                                    function: {
+                                        name: dtc.function?.name || '',
+                                        arguments: dtc.function?.arguments || ''
+                                    }
+                                });
+                            } else {
+                                if (dtc.id) existing.id = dtc.id;
+                                if (dtc.function?.name) existing.function.name += dtc.function.name;
+                                if (dtc.function?.arguments) existing.function.arguments += dtc.function.arguments;
+                            }
+                        }
+                    }
+                } catch {
+                    // ignore chunk parse error
+                }
+            }
+        }
+        content = content.trim();
+        if (toolCallsMap.size > 0) {
+            tool_calls = Array.from(toolCallsMap.values());
+        }
+    }
+
+    return { content, tool_calls };
+}
+
+export async function askAlya(
+    userId: string,
+    authorName: string,
+    channelId: string,
+    userMessage: string,
+    images?: VisionImage[]
+): Promise<string> {
     const isCreator = userId === CREATOR_USER_ID;
     const userIsAdmin = isAdmin(userId) || isCreator;
 
@@ -268,10 +366,20 @@ export async function askAlya(userId: string, authorName: string, channelId: str
     const historyKey = `${channelId}_${userId}`;
     const history = conversationHistories.get(historyKey) || [];
 
+    const userContent: string | ChatContentPart[] = (images && images.length > 0)
+        ? [
+            { type: 'text', text: userMessage },
+            ...images.map(img => ({
+                type: 'image_url' as const,
+                image_url: { url: img.dataUrl }
+            }))
+        ]
+        : userMessage;
+
     const messages: ChatMessage[] = [
         { role: 'system', content: systemPrompt },
         ...history,
-        { role: 'user', content: userMessage }
+        { role: 'user', content: userContent }
     ];
 
     try {
@@ -306,38 +414,7 @@ export async function askAlya(userId: string, authorName: string, channelId: str
             }
 
             const rawText = await response.text();
-            let currentContent = '';
-            let toolCalls: ChatMessage['tool_calls'];
-
-            try {
-                const data = JSON.parse(rawText) as {
-                    choices?: {
-                        message?: {
-                            content?: string;
-                            tool_calls?: ChatMessage['tool_calls'];
-                        };
-                    }[];
-                };
-                currentContent = data.choices?.[0]?.message?.content?.trim() || '';
-                toolCalls = data.choices?.[0]?.message?.tool_calls;
-            } catch {
-                const lines = rawText.split('\n');
-                for (const line of lines) {
-                    const trimmed = line.trim();
-                    if (trimmed.startsWith('data: ') && trimmed !== 'data: [DONE]') {
-                        try {
-                            const chunk = JSON.parse(trimmed.slice(6)) as {
-                                choices?: { delta?: { content?: string }; message?: { content?: string } }[];
-                            };
-                            const chunkContent = chunk.choices?.[0]?.delta?.content || chunk.choices?.[0]?.message?.content;
-                            if (chunkContent) currentContent += chunkContent;
-                        } catch {
-                            // ignore
-                        }
-                    }
-                }
-                currentContent = currentContent.trim();
-            }
+            const { content: currentContent, tool_calls: toolCalls } = parseAiResponse(rawText);
 
             if (currentContent) {
                 answer = currentContent;
@@ -399,8 +476,11 @@ export async function askAlya(userId: string, authorName: string, channelId: str
                     signal: AbortSignal.timeout(35000)
                 });
                 if (finalRes.ok) {
-                    const finalData = await finalRes.json() as { choices?: { message?: { content?: string } }[] };
-                    answer = finalData.choices?.[0]?.message?.content?.trim() || answer;
+                    const finalRaw = await finalRes.text();
+                    const { content: finalContent } = parseAiResponse(finalRaw);
+                    if (finalContent) {
+                        answer = finalContent;
+                    }
                 }
             } catch {
                 // ignore
@@ -442,7 +522,17 @@ export async function askAlya(userId: string, authorName: string, channelId: str
             return 'Alya bingung mau jawab apa barusan xixixi~ Coba ulangi lagi ya! 🌸✨';
         }
 
-        history.push({ role: 'user', content: userMessage });
+        const historyUserContent: string | ChatContentPart[] = (images && images.length > 0)
+            ? [
+                { type: 'text', text: userMessage },
+                ...images.map(img => ({
+                    type: 'image_url' as const,
+                    image_url: { url: img.originalUrl || img.dataUrl }
+                }))
+            ]
+            : userMessage;
+
+        history.push({ role: 'user', content: historyUserContent });
         history.push({ role: 'assistant', content: answer });
 
         if (history.length > MAX_HISTORY) {

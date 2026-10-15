@@ -2,6 +2,7 @@ import { toolRegistry } from '../registry';
 import { askOwnerTool, sendDmTool, setAfkTool, setReminderTool } from './communication';
 import {
     fetchYoutubeTranscriptTool,
+    inspectImageTool,
     manageScheduleTool,
     readFileTool,
     searchNovelCatalogTool
@@ -17,6 +18,7 @@ export function registerDiscordTools(): void {
     toolRegistry.register(sendDmTool);
     toolRegistry.register(askOwnerTool);
     toolRegistry.register(readFileTool);
+    toolRegistry.register(inspectImageTool);
     toolRegistry.register(fetchYoutubeTranscriptTool);
     toolRegistry.register(searchNovelCatalogTool);
     toolRegistry.register(manageScheduleTool);

@@ -1,4 +1,5 @@
 import { askAlya } from '../chat/service';
+import { extractImagesFromMessage } from '../chat/vision';
 import { client } from '../Client';
 import { defineCommand } from '../Command';
 import { getAllowedChatChannelIds, isAllowedChatChannel, PREFIX } from '../constants';
@@ -15,14 +16,10 @@ defineCommand({
             return reply(message, `Ngobrol santai bareng Alya cuma bisa di channel ${channels} yaa! Yuk pindah ke sana xixixi~ 🌸✨`);
         }
 
-        const query = args.join(' ').trim();
-        if (!query) {
-            return reply(message, `Mau ngobrol apa nih? Gunakan: \`${PREFIX} alya <pesanmu>\`, mention aku, atau panggil namaku yaa! 🌸✨`);
-        }
-
         let referencedContent = '';
+        let refMessage: import('oceanic.js').Message | null = null;
         if (message.messageReference?.messageID) {
-            let refMessage = message.channel?.messages.get(message.messageReference.messageID);
+            refMessage = message.channel?.messages.get(message.messageReference.messageID) || null;
             if (!refMessage && message.channel) {
                 try {
                     refMessage = await client.rest.channels.getMessage(message.channel.id, message.messageReference.messageID);
@@ -35,6 +32,17 @@ defineCommand({
             }
         }
 
+        const images = await extractImagesFromMessage(message, refMessage);
+
+        let query = args.join(' ').trim();
+        if (!query && images.length === 0) {
+            return reply(message, `Mau ngobrol apa nih? Gunakan: \`${PREFIX} alya <pesanmu>\`, mention aku, atau kirim gambar yaa! 🌸✨`);
+        }
+
+        if (!query) {
+            query = 'Tolong perhatikan dan baca isi gambar ini, lalu jelaskan atau tanggapi isinya secara ramah, detail, dan ceria.';
+        }
+
         try {
             await message.channel?.sendTyping();
         } catch {
@@ -45,7 +53,7 @@ defineCommand({
             ? `[Konteks: Membalas pesan sebelumnya: "${referencedContent}"]\n\nPesan Pengguna: ${query}`
             : query;
 
-        const answer = await askAlya(message.author.id, message.author.username, message.channel.id, userPrompt);
+        const answer = await askAlya(message.author.id, message.author.username, message.channel.id, userPrompt, images);
         return reply(message, answer);
     }
 });
