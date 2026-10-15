@@ -14,15 +14,166 @@ import { ScheduleItem } from '../../schedule/types';
 import { resolveSafePath } from '../coding/files';
 import { BotTool } from '../types';
 
+function cleanHtmlText(html: string): string {
+    const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+    const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, '').trim() : '';
+
+    const metaDescMatch = html.match(/<meta[^>]+(?:name|property)=['"](?:description|og:description)['"][^>]+content=['"]([^'"]+)['"]/i)
+        || html.match(/<meta[^>]+content=['"]([^'"]+)['"][^>]+(?:name|property)=['"](?:description|og:description)['"]/i);
+    const metaDesc = metaDescMatch ? metaDescMatch[1].trim() : '';
+
+    const cleaned = html
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+        .replace(/<nav\b[^<]*(?:(?!<\/nav>)<[^<]*)*<\/nav>/gi, '')
+        .replace(/<footer\b[^<]*(?:(?!<\/footer>)<[^<]*)*<\/footer>/gi, '')
+        .replace(/<header\b[^<]*(?:(?!<\/header>)<[^<]*)*<\/header>/gi, '')
+        .replace(/<svg\b[^<]*(?:(?!<\/svg>)<[^<]*)*<\/svg>/gi, '')
+        .replace(/<!--[\s\S]*?-->/g, '')
+        .replace(/<br\s*[/]?>/gi, '\n')
+        .replace(/<\/(p|div|h[1-6]|li|tr)>/gi, '\n')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&quot;/g, '"')
+        .replace(/&#x27;/g, "'")
+        .replace(/&amp;/g, '&')
+        .replace(/[ \t]+/g, ' ')
+        .replace(/\n\s*\n/g, '\n\n')
+        .trim();
+
+    return [
+        title ? `Judul Halaman: ${title}` : '',
+        metaDesc ? `Deskripsi: ${metaDesc}` : '',
+        cleaned
+    ].filter(Boolean).join('\n\n');
+}
+
+async function fetchUrlContent(url: string, maxChars: number): Promise<{
+    success: boolean;
+    content?: string;
+    message?: string;
+    source?: string;
+    is_image?: boolean;
+    url?: string;
+    totalLength?: number;
+}> {
+    const isPotentialImage = /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(url.split('?')[0])
+        || /^https?:\/\/(?:cdn|media)\.discordapp\.(?:com|net)\/attachments\//i.test(url);
+
+    if (isPotentialImage) {
+        const imgRes = await inspectImage(url);
+        if (imgRes.success) {
+            return {
+                success: true,
+                source: 'url',
+                is_image: true,
+                url,
+                content: imgRes.analysis
+            };
+        }
+    }
+
+    // Special handling for GitHub repository URL (fetch README automatically)
+    const ghMatch = url.match(/^https?:\/\/github\.com\/([^/]+)\/([^/#?]+)(?:\/?$|\/(?:tree|blob)\/[^/#?]+)?$/i);
+    if (ghMatch) {
+        const owner = ghMatch[1];
+        const repo = ghMatch[2].replace(/\.git$/i, '');
+        const candidateBranches = ['main', 'master'];
+        for (const branch of candidateBranches) {
+            try {
+                const rawReadmeUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/README.md`;
+                const rRes = await fetch(rawReadmeUrl, { signal: AbortSignal.timeout(8000) });
+                if (rRes.ok) {
+                    const text = await rRes.text();
+                    return {
+                        success: true,
+                        source: 'github_readme',
+                        url: rawReadmeUrl,
+                        totalLength: text.length,
+                        content: text.slice(0, maxChars)
+                    };
+                }
+            } catch {
+                // try next candidate
+            }
+        }
+    }
+
+    const res = await fetch(url, {
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,*/*;q=0.7'
+        },
+        signal: AbortSignal.timeout(12000)
+    });
+
+    if (!res.ok) {
+        return { success: false, message: `Gagal mengunduh file atau halaman dari URL: Status ${res.status}` };
+    }
+
+    const contentType = (res.headers.get('content-type') || '').toLowerCase();
+    if (contentType.startsWith('image/')) {
+        const imgRes = await inspectImage(url);
+        return {
+            success: true,
+            source: 'url',
+            is_image: true,
+            url,
+            content: imgRes.analysis || imgRes.message
+        };
+    }
+
+    const rawText = await res.text();
+    let finalContent = rawText;
+    if (contentType.includes('html') || rawText.includes('<html') || rawText.includes('<!DOCTYPE')) {
+        finalContent = cleanHtmlText(rawText);
+    }
+
+    return {
+        success: true,
+        source: 'url',
+        url,
+        totalLength: finalContent.length,
+        content: finalContent.slice(0, maxChars)
+    };
+}
+
+export const fetchWebPageTool: BotTool = {
+    name: 'fetch_web_page',
+    description: 'Mengambil dan membaca isi konten dari link URL web, dokumentasi resmi, artikel, atau repositori GitHub (misal: "https://github.com/nvidia/skillspector", "https://docs.docker.com"). Otomatis mengekstrak teks bersih atau README repository.',
+    parameters: {
+        type: 'object',
+        properties: {
+            url: {
+                type: 'string',
+                description: 'URL halaman web atau repositori GitHub yang ingin dibaca'
+            },
+            max_chars: {
+                type: 'number',
+                description: 'Batas jumlah karakter konten (default: 5000)'
+            }
+        },
+        required: ['url']
+    },
+    execute: async (args) => {
+        const url = String(args.url || '').trim();
+        const maxChars = Math.min(10000, Math.max(500, Number(args.max_chars) || 5000));
+        if (!url) {
+            return { success: false, message: 'Harap berikan link URL yang valid.' };
+        }
+        return await fetchUrlContent(url, maxChars);
+    }
+};
+
 export const readFileTool: BotTool = {
     name: 'read_file',
-    description: 'Membaca isi dokumen attachment atau file teks (TXT, JSON, CSV, Markdown, dsb) baik dari path lokal maupun link URL Discord. Otomatis mengenali dan menganalisis visual jika berupa gambar.',
+    description: 'Membaca isi file teks, dokumen, repositori GitHub, link web/URL, atau attachment Discord (TXT, JSON, CSV, Markdown, README, dsb). Otomatis mengenali visual jika berupa gambar.',
     parameters: {
         type: 'object',
         properties: {
             path_or_url: {
                 type: 'string',
-                description: 'Path file lokal atau URL link attachment Discord'
+                description: 'Path file lokal atau URL link web / repositori GitHub / attachment Discord'
             },
             max_chars: {
                 type: 'number',
@@ -40,47 +191,8 @@ export const readFileTool: BotTool = {
         }
 
         try {
-            const isPotentialImage = /\.(png|jpe?g|webp|gif|bmp|svg)$/i.test(input.split('?')[0])
-                || /^https?:\/\/(?:cdn|media)\.discordapp\.(?:com|net)\/attachments\//i.test(input);
-
             if (/^https?:\/\//i.test(input)) {
-                if (isPotentialImage) {
-                    const imgRes = await inspectImage(input);
-                    if (imgRes.success) {
-                        return {
-                            success: true,
-                            source: 'url',
-                            is_image: true,
-                            url: input,
-                            content: imgRes.analysis
-                        };
-                    }
-                }
-
-                const res = await fetch(input, { signal: AbortSignal.timeout(10000) });
-                if (!res.ok) {
-                    return { success: false, message: `Gagal mengunduh file dari URL: Status ${res.status}` };
-                }
-                const contentType = (res.headers.get('content-type') || '').toLowerCase();
-                if (contentType.startsWith('image/')) {
-                    const imgRes = await inspectImage(input);
-                    return {
-                        success: true,
-                        source: 'url',
-                        is_image: true,
-                        url: input,
-                        content: imgRes.analysis || imgRes.message
-                    };
-                }
-
-                const text = await res.text();
-                return {
-                    success: true,
-                    source: 'url',
-                    url: input,
-                    totalLength: text.length,
-                    content: text.slice(0, maxChars)
-                };
+                return await fetchUrlContent(input, maxChars);
             }
 
             if (isPotentialImage) {

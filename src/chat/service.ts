@@ -248,12 +248,14 @@ function parseAiResponse(rawText: string): { content: string; tool_calls?: ChatM
             choices?: {
                 message?: {
                     content?: string;
+                    reasoning_content?: string;
                     tool_calls?: ChatMessage['tool_calls'];
                 };
             }[];
         };
-        content = data.choices?.[0]?.message?.content?.trim() || '';
-        tool_calls = data.choices?.[0]?.message?.tool_calls;
+        const msg = data.choices?.[0]?.message;
+        content = (msg?.content || msg?.reasoning_content || '').trim();
+        tool_calls = msg?.tool_calls;
     } catch {
         const lines = rawText.split('\n');
         const toolCallsMap = new Map<number, { id: string; type: 'function'; function: { name: string; arguments: string } }>();
@@ -266,6 +268,7 @@ function parseAiResponse(rawText: string): { content: string; tool_calls?: ChatM
                         choices?: {
                             delta?: {
                                 content?: string;
+                                reasoning_content?: string;
                                 tool_calls?: {
                                     index?: number;
                                     id?: string;
@@ -275,12 +278,13 @@ function parseAiResponse(rawText: string): { content: string; tool_calls?: ChatM
                             };
                             message?: {
                                 content?: string;
+                                reasoning_content?: string;
                                 tool_calls?: ChatMessage['tool_calls'];
                             };
                         }[];
                     };
                     const choice = chunk.choices?.[0];
-                    const chunkContent = choice?.delta?.content || choice?.message?.content;
+                    const chunkContent = choice?.delta?.content || choice?.message?.content || choice?.delta?.reasoning_content;
                     if (chunkContent) content += chunkContent;
 
                     const deltaToolCalls = choice?.delta?.tool_calls || choice?.message?.tool_calls;
@@ -385,10 +389,12 @@ export async function askAlya(
     try {
         let answer = '';
         let loopCount = 0;
-        const maxLoops = 4;
+        const maxLoops = 6;
 
         while (loopCount < maxLoops) {
             loopCount++;
+            const isLastLoop = loopCount === maxLoops;
+
             const response = await fetch(`${apiBase}/chat/completions`, {
                 method: 'POST',
                 headers: {
@@ -398,7 +404,8 @@ export async function askAlya(
                 body: JSON.stringify({
                     model,
                     messages,
-                    tools: availableTools.length > 0 ? availableTools : undefined,
+                    tools: (!isLastLoop && availableTools.length > 0) ? availableTools : undefined,
+                    tool_choice: isLastLoop ? 'none' : undefined,
                     stream: false
                 }),
                 signal: AbortSignal.timeout(35000)
@@ -420,7 +427,7 @@ export async function askAlya(
                 answer = currentContent;
             }
 
-            if (Array.isArray(toolCalls) && toolCalls.length > 0) {
+            if (!isLastLoop && Array.isArray(toolCalls) && toolCalls.length > 0) {
                 messages.push({
                     role: 'assistant',
                     content: currentContent || undefined,
@@ -455,6 +462,13 @@ export async function askAlya(
                         content: typeof execResult === 'string' ? execResult : JSON.stringify(execResult)
                     });
                 }
+
+                if (loopCount === maxLoops - 1) {
+                    messages.push({
+                        role: 'user',
+                        content: 'Berdasarkan semua informasi dan hasil tools di atas, tolong langsung rangkum dan berikan jawaban serta analisis akhirmu sekarang secara ramah dan lengkap (tanpa memanggil tool lagi).'
+                    });
+                }
             } else {
                 break;
             }
@@ -462,6 +476,10 @@ export async function askAlya(
 
         if (!answer) {
             try {
+                messages.push({
+                    role: 'user',
+                    content: 'Berdasarkan semua informasi dan hasil tools di atas, tolong berikan kesimpulan dan jawaban akhirmu sekarang secara ramah, ceria, dan lengkap dalam bahasa Indonesia.'
+                });
                 const finalRes = await fetch(`${apiBase}/chat/completions`, {
                     method: 'POST',
                     headers: {
@@ -471,6 +489,8 @@ export async function askAlya(
                     body: JSON.stringify({
                         model,
                         messages,
+                        tools: undefined,
+                        tool_choice: 'none',
                         stream: false
                     }),
                     signal: AbortSignal.timeout(35000)
@@ -519,6 +539,18 @@ export async function askAlya(
         answer = answer.trim();
 
         if (!answer) {
+            const lastToolMsg = [...messages].reverse().find(m => m.role === 'tool');
+            if (lastToolMsg && typeof lastToolMsg.content === 'string') {
+                try {
+                    const parsedTool = JSON.parse(lastToolMsg.content);
+                    if (parsedTool.results && Array.isArray(parsedTool.results) && parsedTool.results.length > 0) {
+                        const top = parsedTool.results.slice(0, 3).map((r: { title: string; url: string; snippet: string }) => `• **[${r.title}](${r.url})**\n  ${r.snippet}`).join('\n\n');
+                        return `Alya berhasil menemukan informasi terkait, ini ringkasannya yaa! 🌸✨\n\n${top}`;
+                    }
+                } catch {
+                    // ignore
+                }
+            }
             return 'Alya bingung mau jawab apa barusan xixixi~ Coba ulangi lagi ya! 🌸✨';
         }
 

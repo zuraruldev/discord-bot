@@ -75,6 +75,58 @@ export async function searchWeb(query: string, limit = 5): Promise<{ title: stri
     const cleanQuery = query.trim();
     if (!cleanQuery) return [];
 
+    // 1. Try DuckDuckGo Lite (reliable from server & datacenter IPs)
+    try {
+        const liteRes = await fetch('https://lite.duckduckgo.com/lite/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+            },
+            body: new URLSearchParams({ q: cleanQuery }).toString(),
+            signal: AbortSignal.timeout(8000)
+        });
+
+        if (liteRes.ok) {
+            const html = await liteRes.text();
+            const linkRegex = /<a[^>]+href=[\x27"]([^\x27"]+)[\x27"][^>]+class=[\x27"]result-link[\x27"][^>]*>([\s\S]*?)<\/a>/gi;
+            const snippetRegex = /<td[^>]+class=[\x27"]result-snippet[\x27"][^>]*>([\s\S]*?)<\/td>/gi;
+
+            const links: { url: string; title: string }[] = [];
+            let lm: RegExpExecArray | null;
+            while ((lm = linkRegex.exec(html)) !== null) {
+                links.push({
+                    url: lm[1],
+                    title: lm[2].replace(/<[^>]+>/g, '').replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').trim()
+                });
+            }
+
+            const snippets: string[] = [];
+            let sm: RegExpExecArray | null;
+            while ((sm = snippetRegex.exec(html)) !== null) {
+                snippets.push(
+                    sm[1].replace(/<[^>]+>/g, '').replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&amp;/g, '&').trim()
+                );
+            }
+
+            const results: { title: string; url: string; snippet: string }[] = [];
+            for (let i = 0; i < Math.min(links.length, limit); i++) {
+                if (links[i].url && links[i].title) {
+                    results.push({
+                        title: links[i].title,
+                        url: links[i].url,
+                        snippet: snippets[i] || ''
+                    });
+                }
+            }
+
+            if (results.length > 0) return results;
+        }
+    } catch {
+        // fallback to standard html
+    }
+
     try {
         const ddgRes = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(cleanQuery)}`, {
             headers: {
