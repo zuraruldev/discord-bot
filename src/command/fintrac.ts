@@ -2,7 +2,13 @@ import type { EmbedOptions } from 'oceanic.js';
 
 import { defineCommand } from '../Command.ts';
 import { isAdmin, PREFIX } from '../constants.ts';
-import { allowFintracUser, getFintracAuthorizedUsers, isFintracAuthorized, revokeFintracUser } from '../fintrac/auth.ts';
+import {
+    allowFintracUser,
+    getFintracAuthorizedUsers,
+    isFintracAuthorized,
+    revokeFintracUser,
+    setFintracAlertChannelId
+} from '../fintrac/auth.ts';
 import { getFintracQuote, getFintracStatus, logFintracTrade, runFintracScan } from '../fintrac/bridge.ts';
 import { createErrorEmbed, createInfoEmbed, createSuccessEmbed, reply } from '../utils.ts';
 
@@ -20,6 +26,7 @@ defineCommand({
         'quote <ticker>',
         'status',
         'log <buy|sell> <ticker> <lots> <price>',
+        'setchannel [#channel | id]',
         'allow <@user | id>',
         'revoke <@user | id>',
         'users'
@@ -68,6 +75,28 @@ defineCommand({
                     embeds: [createSuccessEmbed('Akses Dicabut', `Akses FINTRAC untuk pengguna <@${target}> telah dicabut.`)]
                 });
             }
+        }
+
+        // 1.5 Channel configuration
+        if (subCommand === 'setchannel' || subCommand === 'channel') {
+            if (!isAdmin(message.author.id)) {
+                return reply(message, {
+                    embeds: [createErrorEmbed('Akses Terbatas', 'Perintah konfigurasi channel FINTRAC hanya dapat dijalankan oleh Admin.')]
+                });
+            }
+
+            const targetChannelId = args[1]?.replace(/[<#>]/g, '') || message.channel?.id;
+            if (!targetChannelId) {
+                return reply(message, 'Channel tidak valid.');
+            }
+
+            setFintracAlertChannelId(targetChannelId);
+            return reply(message, {
+                embeds: [createSuccessEmbed(
+                    'Channel Briefing FINTRAC Diatur',
+                    `Channel briefing pasar otomatis FINTRAC (08:30, 12:00, 16:05 WIB) berhasil diatur ke <#${targetChannelId}> (\`${targetChannelId}\`).`
+                )]
+            });
         }
 
         // 2. Quote Single Ticker
@@ -230,7 +259,7 @@ defineCommand({
 
         return reply(
             message,
-            `Subcommand tidak dikenal! Gunakan: \`${PREFIX}fintrac <scan | midday | quote | status | log | allow | revoke | users>\``
+            `Subcommand tidak dikenal! Gunakan: \`${PREFIX}fintrac <scan | midday | quote | status | log | setchannel | allow | revoke | users>\``
         );
     }
 });

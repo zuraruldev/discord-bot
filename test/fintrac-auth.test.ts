@@ -1,6 +1,13 @@
 import assert from 'node:assert';
 import test from 'node:test';
-import { allowFintracUser, getFintracAuthorizedUsers, isFintracAuthorized, revokeFintracUser } from '../src/fintrac/auth.ts';
+import {
+    allowFintracUser,
+    getFintracAlertChannelId,
+    getFintracAuthorizedUsers,
+    isFintracAuthorized,
+    revokeFintracUser,
+    setFintracAlertChannelId
+} from '../src/fintrac/auth.ts';
 
 test('isFintracAuthorized allows admin users', () => {
     // Admin user from constants: '1256220010859466795'
@@ -23,4 +30,10 @@ test('allowFintracUser and revokeFintracUser manage permissions', () => {
     const revoked = revokeFintracUser(testUserId);
     assert.strictEqual(revoked, true);
     assert.strictEqual(isFintracAuthorized(testUserId), false);
+});
+
+test('setFintracAlertChannelId and getFintracAlertChannelId manage alert channel', () => {
+    const testChannelId = '123456789098765432';
+    setFintracAlertChannelId(testChannelId);
+    assert.strictEqual(getFintracAlertChannelId(), testChannelId);
 });

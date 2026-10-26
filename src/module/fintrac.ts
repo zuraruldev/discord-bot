@@ -1,6 +1,7 @@
 import type { EmbedOptions } from 'oceanic.js';
 
 import { client } from '../Client.ts';
+import { getFintracAlertChannelId } from '../fintrac/auth.ts';
 import { getFintracStatus, runFintracScan } from '../fintrac/bridge.ts';
 import { createInfoEmbed, send } from '../utils.ts';
 
@@ -42,7 +43,7 @@ const triggeredAlerts = new Set<string>();
 let schedulerInterval: NodeJS.Timeout | null = null;
 
 export async function dispatchFintracBrief(slot: '08:30' | '12:00' | '16:05', channelId?: string): Promise<boolean> {
-    const targetChannel = channelId || process.env.FINTRAC_ALERT_CHANNEL_ID;
+    const targetChannel = channelId || getFintracAlertChannelId();
     if (!targetChannel) {
         return false;
     }
@@ -118,7 +119,8 @@ export async function dispatchFintracBrief(slot: '08:30' | '12:00' | '16:05', ch
 }
 
 async function checkFintracTick(): Promise<void> {
-    if (!process.env.FINTRAC_ALERT_CHANNEL_ID) {
+    const alertChannel = getFintracAlertChannelId();
+    if (!alertChannel) {
         return;
     }
 
