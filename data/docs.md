@@ -145,6 +145,29 @@
   - `fx vault grep "Materi" /notes`
   - `fx vault df`
 
+#### `fx fintrac`
+- Aliases: `ft`, `idx80`, `screener`
+- Permission: Admins and Authorized Traders (`isFintracAuthorized`)
+- Purpose: Screener momentum IDX80 dan manajemen portofolio virtual trading FINTRAC 2026 pada IDX Mobile.
+- Tournament Rules:
+  - Starting Capital: Rp 200.000.000.
+  - Universe: Hanya saham konstituen resmi IDX80 (`idx80_tickers.txt`). Saham di luar IDX80 didiskualifikasi.
+  - Quota: Minimal 10 transaksi selama 1 minggu turnamen across minimal 2 saham berbeda.
+  - Strategi: Swing momentum dengan alokasi terkonsentrasi 2-3 posisi, TP1 +4.5% (jual 50%), TP2 +8.5% (jual 50%), Stop Loss -2.8%, pembulatan fraksi harga BEI.
+- Syntax:
+  - `fx fintrac scan` - Jalankan scan prapasar (1D candle) untuk mencari 3 setup terbaik
+  - `fx fintrac midday` - Jalankan review sesi siang (60M candle)
+  - `fx fintrac quote <ticker>` - Cek harga live, lot size, target TP1/TP2, SL, RVOL, dan RSI untuk satu saham IDX80
+  - `fx fintrac status` - Cek total aset, saldo kas, nilai portofolio, realized PnL, posisi terbuka, dan progres kuota 10 transaksi
+  - `fx fintrac log <buy|sell> <ticker> <lots> <price>` - Catat transaksi eksekusi ke trades.json
+  - `fx fintrac allow <@user | id>` - (Admin) Berikan akses screener kepada anggota
+  - `fx fintrac revoke <@user | id>` - (Admin) Cabut akses screener dari anggota
+  - `fx fintrac users` - (Admin) Tampilkan daftar anggota yang diizinkan mengakses FINTRAC
+- AI Chat Integration (Alya):
+  - Alya memiliki function tools `fintrac_scan`, `fintrac_quote`, `fintrac_status`, dan `fintrac_log_trade`.
+  - Trader resmi dapat meminta Alya: "Alya, cek setup momentum IDX80 pagi ini dong", "Berapa sisa kuota transaksi kita?", atau "Catat buy BBCA 65 lot di harga 10200".
+
+
 ### Admin Commands
 
 #### `fx status`

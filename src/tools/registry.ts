@@ -1,4 +1,5 @@
-import { BotTool, ToolDefinition, ToolExecutionContext } from './types';
+import { isFintracAuthorized } from '../fintrac/auth.ts';
+import type { BotTool, ToolDefinition, ToolExecutionContext } from './types.ts';
 
 class ToolRegistry {
     private tools = new Map<string, BotTool>();
@@ -11,12 +12,16 @@ class ToolRegistry {
         return this.tools.get(name);
     }
 
-    public getAllDefinitions(options?: { isAdmin?: boolean }): ToolDefinition[] {
+    public getAllDefinitions(options?: { isAdmin?: boolean; userId?: string }): ToolDefinition[] {
         const definitions: ToolDefinition[] = [];
         const isAdmin = options?.isAdmin ?? false;
+        const userId = options?.userId ?? '';
 
         for (const tool of this.tools.values()) {
             if (tool.adminOnly && !isAdmin) {
+                continue;
+            }
+            if (tool.fintracOnly && !isFintracAuthorized(userId)) {
                 continue;
             }
             definitions.push({
@@ -49,6 +54,13 @@ class ToolRegistry {
             return {
                 success: false,
                 message: `Akses ditolak: Tool "${name}" hanya boleh dijalankan oleh Admin atau Developer bot.`
+            };
+        }
+
+        if (tool.fintracOnly && !isFintracAuthorized(context.userId)) {
+            return {
+                success: false,
+                message: `Akses ditolak: Tool "${name}" hanya boleh dijalankan oleh Admin atau trader FINTRAC yang terdaftar.`
             };
         }
 

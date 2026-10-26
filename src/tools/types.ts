@@ -31,5 +31,6 @@ export interface BotTool {
         required?: string[];
     };
     adminOnly?: boolean;
+    fintracOnly?: boolean;
     execute: (args: Record<string, unknown>, context: ToolExecutionContext) => Promise<unknown>;
 }

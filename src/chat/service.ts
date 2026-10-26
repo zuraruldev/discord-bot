@@ -343,7 +343,7 @@ export async function askAlya(
     const apiBase = (process.env.AI_API_BASE || 'http://localhost:20128/v1').replace(/\/+$/, '');
     const apiKey = process.env.AI_API_KEY || '';
     const model = process.env.AI_MODEL || 'ag/gemini-3.8-flash-low';
-    const availableTools = toolRegistry.getAllDefinitions({ isAdmin: userIsAdmin });
+    const availableTools = toolRegistry.getAllDefinitions({ isAdmin: userIsAdmin, userId });
 
     const db = await loadScheduleDb();
     const timeZone = (process.env.REMINDER_TIMEZONE || db.timezone || 'Asia/Jakarta') as string;
